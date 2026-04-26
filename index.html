@@ -320,12 +320,8 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   /* Bigger page number and + button */
   #pageNum{font-size:16px !important;height:36px !important;line-height:36px !important;right:50px !important;bottom:12px !important;opacity:0.7 !important;}
   #addPage{width:36px !important;height:36px !important;font-size:24px !important;bottom:12px !important;right:10px !important;opacity:0.4 !important;}
-  #bookmarkBtn{width:36px !important;height:36px !important;top:12px !important;right:10px !important;opacity:0.25 !important;}
-  #bookmarkBtn.bookmarked{opacity:1 !important;}
-  #bookmarkBtn svg{width:20px !important;height:22px !important;}
-  #bookmarkLabel{top:16px !important;right:52px !important;height:36px !important;max-width:180px !important;}
-  #bookmarkLabel .bl-title{font-size:14px !important;}
-  #bookmarkLabel .bl-date{font-size:11px !important;}
+  /* Bookmark feature is disabled on iPhone — too cramped for the popover and not the primary use case */
+  #bookmarkBtn, #bookmarkLabel, #bookmarkPopover{display:none !important;}
   #pageNav{height:36px !important;gap:10px !important;bottom:12px !important;}
   .pn-btn{width:28px !important;height:28px !important;}
   .pn-btn svg{width:14px !important;height:14px !important;}
@@ -747,7 +743,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 //  ──────────
 //  notes[]    {id, x, slot, si, head, acc, accXOff?}
 //  stems[]    {id, noteId, x, y1, y2}  y1=notehead, y2=tip
-//  beams[]    {id, stemId1, stemId2, layer}  layer 0=primary
+//  beams[]    {id, stemId1, stemId2, layer, manualSlant?}  layer 0=primary; manualSlant=true bypasses 1-space auto cap
 //  flags[]    {id, stemId}
 //  barlines[] {id, x, y1, y2, s1, s2, final}
 //  clefs[]    {id, type, si, x}
@@ -1465,31 +1461,33 @@ function resize(){
   });
 
   // Bookmark UI scales with zoom too (same pattern as the + button so it stays
-  // visually proportional to the page).
-  const bookmarkBtn = document.getElementById('bookmarkBtn');
-  if(bookmarkBtn){
-    bookmarkBtn.style.top    = Math.round(14 * s) + 'px';
-    bookmarkBtn.style.right  = Math.round(14 * s) + 'px';
-    bookmarkBtn.style.width  = Math.round(28 * s) + 'px';
-    bookmarkBtn.style.height = Math.round(28 * s) + 'px';
-    const svg = bookmarkBtn.querySelector('svg');
-    if(svg){
-      svg.style.width  = Math.round(16 * s) + 'px';
-      svg.style.height = Math.round(18 * s) + 'px';
+  // visually proportional to the page). Skipped on iPhone where the feature is disabled.
+  if(!_isIPhone){
+    const bookmarkBtn = document.getElementById('bookmarkBtn');
+    if(bookmarkBtn){
+      bookmarkBtn.style.top    = Math.round(14 * s) + 'px';
+      bookmarkBtn.style.right  = Math.round(14 * s) + 'px';
+      bookmarkBtn.style.width  = Math.round(28 * s) + 'px';
+      bookmarkBtn.style.height = Math.round(28 * s) + 'px';
+      const svg = bookmarkBtn.querySelector('svg');
+      if(svg){
+        svg.style.width  = Math.round(16 * s) + 'px';
+        svg.style.height = Math.round(18 * s) + 'px';
+      }
     }
-  }
-  const bookmarkLabel = document.getElementById('bookmarkLabel');
-  if(bookmarkLabel){
-    bookmarkLabel.style.top    = Math.round(16 * s) + 'px';
-    bookmarkLabel.style.right  = Math.round(48 * s) + 'px';
-    bookmarkLabel.style.height = Math.round(28 * s) + 'px';
-    bookmarkLabel.style.maxWidth = Math.round(240 * s) + 'px';
-    const blTitle = bookmarkLabel.querySelector('.bl-title');
-    const blDate  = bookmarkLabel.querySelector('.bl-date');
-    if(blTitle) blTitle.style.fontSize = Math.round(13 * s) + 'px';
-    if(blDate){
-      blDate.style.fontSize = Math.round(11 * s) + 'px';
-      blDate.style.marginTop = Math.round(3 * s) + 'px';
+    const bookmarkLabel = document.getElementById('bookmarkLabel');
+    if(bookmarkLabel){
+      bookmarkLabel.style.top    = Math.round(16 * s) + 'px';
+      bookmarkLabel.style.right  = Math.round(48 * s) + 'px';
+      bookmarkLabel.style.height = Math.round(28 * s) + 'px';
+      bookmarkLabel.style.maxWidth = Math.round(240 * s) + 'px';
+      const blTitle = bookmarkLabel.querySelector('.bl-title');
+      const blDate  = bookmarkLabel.querySelector('.bl-date');
+      if(blTitle) blTitle.style.fontSize = Math.round(13 * s) + 'px';
+      if(blDate){
+        blDate.style.fontSize = Math.round(11 * s) + 'px';
+        blDate.style.marginTop = Math.round(3 * s) + 'px';
+      }
     }
   }
 
@@ -2284,7 +2282,9 @@ function visualStemTipY(s){
     const [endL,endR]=s1.x<=s2.x?[s1,s2]:[s2,s1];
     let ly=stemTipY(endL), ry=stemTipY(endR);
     const slant=ry-ly;
-    if(Math.abs(slant)>LS*4){const c=Math.sign(slant)*LS*4;if(stemIsUp(endL)){if(ly<ry)ry=ly+c;else ly=ry-c;}else{if(ly>ry)ry=ly+c;else ly=ry-c;}}
+    // Auto beams cap at 1 staff space; user-adjusted beams cap at 4 (sanity max).
+    const cap = b.manualSlant ? LS*4 : LS;
+    if(Math.abs(slant)>cap){const c=Math.sign(slant)*cap;if(stemIsUp(endL)){if(ly<ry)ry=ly+c;else ly=ry-c;}else{if(ly>ry)ry=ly+c;else ly=ry-c;}}
     const spanX=endR.x-endL.x;
     const t=spanX>0.1?(s.x-endL.x)/spanX:0;
     return ly+t*(ry-ly);
@@ -2298,6 +2298,45 @@ function isStemBeamEndpoint(s){
     if(b.stemId1===s.id||b.stemId2===s.id) return true;
   }
   return false;
+}
+
+// Mark every primary beam where the given stem is an endpoint as having a
+// user-adjusted slant. This bypasses the auto 1-space cap so the user can
+// pull stems further to create steeper beams (still capped at 4 spaces for
+// sanity). Children/partials inherit slant from their primary, so the flag
+// only needs to live on the primary beam.
+function markBeamsManualSlant(stemId){
+  for(const b of beams){
+    if((b.layer||0) !== 0) continue;
+    if(b.stemId1 === stemId || b.stemId2 === stemId){
+      b.manualSlant = true;
+    }
+  }
+}
+
+// Called at the start of an endpoint-stem drag. For any primary beam this stem
+// is an endpoint of, the underlying y2 values may have been further apart than
+// the rendered (auto-capped) slant. If we just flip manualSlant=true, the next
+// frame would render the uncapped, "real" y2 values and the beam visibly jumps.
+// To prevent the jump, snap each endpoint's y2 to the value currently being
+// rendered (the auto-capped tip), THEN flip manualSlant. Drag math then works
+// from a baseline that matches what the user sees.
+function commitBeamSlantToVisual(stemId){
+  for(const b of beams){
+    if((b.layer||0) !== 0) continue;
+    if(b.stemId1 !== stemId && b.stemId2 !== stemId) continue;
+    if(b.manualSlant) continue; // already manual, no fixation needed
+    const s1 = stems.find(s => s.id === b.stemId1);
+    const s2 = stems.find(s => s.id === b.stemId2);
+    if(!s1 || !s2) continue;
+    // Snapshot the rendered tips BEFORE flipping the flag (so the auto cap
+    // applies during the read), then commit them and flip.
+    const v1 = visualStemTipY(s1);
+    const v2 = visualStemTipY(s2);
+    s1.y2 = v1;
+    s2.y2 = v2;
+    b.manualSlant = true;
+  }
 }
 
 // Returns true if stem is an intermediate beam member (in a beam but NOT an endpoint)
@@ -2596,10 +2635,10 @@ function drawBeamPreview(startStem, endX, endY, col, alpha, beamSlant, beamGeom)
   const members = stems
     .filter(s => stemIsUp(s) === up && s.x >= xMin && s.x <= xMax && stemStaff(s) === si)
     .sort((a, b) => a.x - b.x);
-  // Straight line from startStem tip to ghost end, capped slant
+  // Straight line from startStem tip to ghost end, capped at 1 staff space (auto rule).
   let startY = visualStemTipY(startStem);
   let slant = endY - startY;
-  if(Math.abs(slant) > LS*4) slant = Math.sign(slant) * LS*4;
+  if(Math.abs(slant) > LS) slant = Math.sign(slant) * LS;
   const spanX = endX - startStem.x;
   // All x positions: startStem + intermediate members + ghost end
   const allX = [...new Set([startStem.x, ...members.map(s=>s.x), endX])].sort((a,b)=>a-b);
@@ -3209,7 +3248,8 @@ function render(){
     const [endL,endR]=s1.x<=s2.x?[s1,s2]:[s2,s1];
     let leftY=stemTipY(endL), rightY=stemTipY(endR);
     const slant=rightY-leftY;
-    const MAX_SLANT=LS*4;
+    // Auto beams cap at 1 staff space; user-adjusted beams cap at 4 (sanity max).
+    const MAX_SLANT = b.manualSlant ? LS*4 : LS;
     if(Math.abs(slant)>MAX_SLANT){
       const capped=Math.sign(slant)*MAX_SLANT;
       if(up){if(leftY<rightY)rightY=leftY+capped;else leftY=rightY-capped;}
@@ -3708,6 +3748,10 @@ function notationDown(x,y){
       const selStem=stems.find(s=>s.id===sel.id);
       if(selStem && Math.hypot(x-selStem.x, y-visualStemTipY(selStem)) < TIP_R){
         historyPush();
+        // Before capturing drag origin: if this stem is an endpoint of an
+        // auto-capped beam, snap its y2 (and the other endpoint's) to the
+        // currently-rendered values so the drag begins without a visible jump.
+        commitBeamSlantToVisual(selStem.id);
         // Start tip drag for angle adjustment (works for both beamed and unbeamed stems)
         selDragging=true;
         selDragStart={x,y};
@@ -3733,6 +3777,10 @@ function notationDown(x,y){
       // Desktop: always allow drag on first click. iPad: require two taps (matches note/accidental/tie pattern).
       if(alreadySelected || !_isTouch){
         historyPush();
+        // Before capturing drag origin: if this stem is an endpoint of an
+        // auto-capped beam, snap its y2 (and the other endpoint's) to the
+        // currently-rendered values so the drag begins without a visible jump.
+        commitBeamSlantToVisual(hitTip.id);
         sel={type:'stemTip',id:hitTip.id};
         selSet=[];
         selDragging=true;
@@ -4493,6 +4541,9 @@ function notationMove(x,y){
           } else {
             s.y2 = Math.max(selDragOrig.y1+minLen, newY2); // tip must stay below notehead
           }
+          // Mark any beam that this stem is an endpoint of as manually slanted,
+          // so the auto-1-space cap is bypassed during render.
+          markBeamsManualSlant(s.id);
         }
       }
     } else if(sel.type==='beam'){
@@ -6770,6 +6821,24 @@ function restoreSaveData(data){
       if(data.createdAt[i]) pages[i].createdAt = data.createdAt[i];
     }
   }
+  // Migration: pre-existing beams in loaded notebooks may have slants > 1 space
+  // that the user previously dragged into place. Mark such primary beams as
+  // manualSlant so the new 1-space auto cap doesn't retroactively flatten them.
+  for(const pg of pages){
+    if(!pg.snap) continue;
+    const pgBeams = pg.snap.beams || [];
+    const pgStems = pg.snap.stems || [];
+    for(const b of pgBeams){
+      if((b.layer||0) !== 0) continue;
+      if(b.manualSlant !== undefined) continue; // already tagged
+      const s1 = pgStems.find(s => s.id === b.stemId1);
+      const s2 = pgStems.find(s => s.id === b.stemId2);
+      if(!s1 || !s2) continue;
+      if(Math.abs(s2.y2 - s1.y2) > LS + 0.001){
+        b.manualSlant = true;
+      }
+    }
+  }
   loadPage(currentPage);
   updatePageBar();
   // Reset interaction state
@@ -7977,6 +8046,7 @@ function resolveBookmarkDate(pg){
 }
 
 function syncBookmarkIcon(){
+  if(_isIPhone) return; // Bookmark feature is disabled on iPhone
   const btn = document.getElementById('bookmarkBtn');
   if(!btn) return;
   const pg = pages[currentPage];
@@ -8041,69 +8111,75 @@ function commitBookmarkEdits(){
   autoSave();
 }
 
-document.getElementById('bookmarkBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  const pg = pages[currentPage];
-  const popover = document.getElementById('bookmarkPopover');
-  if(popover.classList.contains('show')){
-    // Popover open — close it
-    commitBookmarkEdits();
+// Bookmark UI wiring — only attached on non-iPhone platforms.
+// On iPhone, the bookmark elements are hidden via CSS and these listeners
+// are never installed. Bookmark data on pages still round-trips through
+// save/restore so iPhone-loaded notebooks preserve bookmarks made elsewhere.
+if(!_isIPhone){
+  document.getElementById('bookmarkBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const pg = pages[currentPage];
+    const popover = document.getElementById('bookmarkPopover');
+    if(popover.classList.contains('show')){
+      // Popover open — close it
+      commitBookmarkEdits();
+      closeBookmarkPopover();
+      return;
+    }
+    if(!pg.bookmark){
+      // Not bookmarked — bookmark and open the editor
+      pg.bookmark = { title: '', notes: '', date: resolveBookmarkDate(pg), showDate: true };
+      syncBookmarkIcon();
+      updatePageBar();
+      autoSave();
+    }
+    // Bookmarked (either pre-existing or just-created) — open the editor.
+    // Removal happens only via the explicit "Remove bookmark" button in the popover.
+    openBookmarkPopover();
+  });
+
+  document.querySelector('#bookmarkPopover .bp-remove').addEventListener('click', () => {
+    const pg = pages[currentPage];
+    delete pg.bookmark;
     closeBookmarkPopover();
-    return;
-  }
-  if(!pg.bookmark){
-    // Not bookmarked — bookmark and open the editor
-    pg.bookmark = { title: '', notes: '', date: resolveBookmarkDate(pg), showDate: true };
     syncBookmarkIcon();
     updatePageBar();
     autoSave();
-  }
-  // Bookmarked (either pre-existing or just-created) — open the editor.
-  // Removal happens only via the explicit "Remove bookmark" button in the popover.
-  openBookmarkPopover();
-});
+  });
 
-document.querySelector('#bookmarkPopover .bp-remove').addEventListener('click', () => {
-  const pg = pages[currentPage];
-  delete pg.bookmark;
-  closeBookmarkPopover();
-  syncBookmarkIcon();
-  updatePageBar();
-  autoSave();
-});
+  ['input','blur'].forEach(evt => {
+    document.querySelector('#bookmarkPopover .bp-title').addEventListener(evt, commitBookmarkEdits);
+    document.querySelector('#bookmarkPopover .bp-date').addEventListener(evt, commitBookmarkEdits);
+    document.querySelector('#bookmarkPopover .bp-notes').addEventListener(evt, commitBookmarkEdits);
+  });
+  document.querySelector('#bookmarkPopover .bp-date-show').addEventListener('change', commitBookmarkEdits);
 
-['input','blur'].forEach(evt => {
-  document.querySelector('#bookmarkPopover .bp-title').addEventListener(evt, commitBookmarkEdits);
-  document.querySelector('#bookmarkPopover .bp-date').addEventListener(evt, commitBookmarkEdits);
-  document.querySelector('#bookmarkPopover .bp-notes').addEventListener(evt, commitBookmarkEdits);
-});
-document.querySelector('#bookmarkPopover .bp-date-show').addEventListener('change', commitBookmarkEdits);
-
-document.addEventListener('mousedown', e => {
-  const popover = document.getElementById('bookmarkPopover');
-  const btn = document.getElementById('bookmarkBtn');
-  if(!popover.classList.contains('show')) return;
-  if(popover.contains(e.target) || btn.contains(e.target)) return;
-  commitBookmarkEdits();
-  closeBookmarkPopover();
-});
-document.addEventListener('touchstart', e => {
-  const popover = document.getElementById('bookmarkPopover');
-  const btn = document.getElementById('bookmarkBtn');
-  if(!popover.classList.contains('show')) return;
-  if(popover.contains(e.target) || btn.contains(e.target)) return;
-  commitBookmarkEdits();
-  closeBookmarkPopover();
-}, {passive:true});
-
-document.addEventListener('keydown', e => {
-  if(e.key === 'Escape' && document.getElementById('bookmarkPopover').classList.contains('show')){
+  document.addEventListener('mousedown', e => {
+    const popover = document.getElementById('bookmarkPopover');
+    const btn = document.getElementById('bookmarkBtn');
+    if(!popover.classList.contains('show')) return;
+    if(popover.contains(e.target) || btn.contains(e.target)) return;
     commitBookmarkEdits();
     closeBookmarkPopover();
-  }
-});
+  });
+  document.addEventListener('touchstart', e => {
+    const popover = document.getElementById('bookmarkPopover');
+    const btn = document.getElementById('bookmarkBtn');
+    if(!popover.classList.contains('show')) return;
+    if(popover.contains(e.target) || btn.contains(e.target)) return;
+    commitBookmarkEdits();
+    closeBookmarkPopover();
+  }, {passive:true});
 
-syncBookmarkIcon();
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && document.getElementById('bookmarkPopover').classList.contains('show')){
+      commitBookmarkEdits();
+      closeBookmarkPopover();
+    }
+  });
+
+  syncBookmarkIcon();
+}
 
 // ── Click black margin to turn pages (desktop only) ──────────────────────
 document.querySelector('.paper').addEventListener('click', e => {
