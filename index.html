@@ -1173,11 +1173,28 @@ function _playFreqsNow(freqs){
   }
 }
 function chordGroupExtent(group){
-  // Returns [minX, maxX] of the rendered noteheads in this group
-  const sorted=[...group].sort((a,b)=>a.slot-b.slot);
-  const offsets=computeNoteOffsets(sorted, chordStemUp(group));
-  const xs=sorted.map((n,i)=>n.x+offsets[i]);
-  return [Math.min(...xs)-NW, Math.max(...xs)+NW];
+  // Returns [minX, maxX] of the rendered noteheads in this group.
+  // If the group contains both up and down stems (two separate chords sharing
+  // an x), each subgroup is laid out independently — return the union extent
+  // of both layouts so caller-side x-overlap detection still works.
+  const dirs=group.map(noteStemDir);
+  const subgroups = (dirs.includes('up') && dirs.includes('down'))
+    ? [group.filter(n=>noteStemDir(n)==='up'),
+       group.filter(n=>noteStemDir(n)==='down'),
+       group.filter(n=>noteStemDir(n)==null)]
+        .filter(g=>g.length>0)
+    : [group];
+  let minX=Infinity, maxX=-Infinity;
+  for(const sg of subgroups){
+    const sorted=[...sg].sort((a,b)=>a.slot-b.slot);
+    const offsets=computeNoteOffsets(sorted, chordStemUp(sg));
+    for(let i=0;i<sorted.length;i++){
+      const x=sorted[i].x+offsets[i];
+      if(x<minX) minX=x;
+      if(x>maxX) maxX=x;
+    }
+  }
+  return [minX-NW, maxX+NW];
 }
 
 function chordsOnStaff(sn){
@@ -1243,13 +1260,59 @@ function chordStemUp(group){
   if(!s)return null;
   return s.y2<s.y1; // tip above notehead = stem up
 }
+
+// Stem direction for a single note: 'up' | 'down' | null (no stem)
+function noteStemDir(n){
+  const s=stems.find(st=>st.noteId===n.id);
+  if(!s) return null;
+  return s.y2<s.y1 ? 'up' : 'down';
+}
+
+// Split a chord group into stem-direction subgroups, when the group contains
+// stems pointing both up AND down (two separate chords landing at the same x).
+// Returns {up, down, none} arrays. Un-stemmed notes are assigned to whichever
+// stem-direction's owner-slot is closest. If the group has only one direction
+// (or no stems), returns the whole group under its single direction.
+function chordSubgroups(group){
+  const upOwners=group.filter(n=>noteStemDir(n)==='up');
+  const downOwners=group.filter(n=>noteStemDir(n)==='down');
+  if(!(upOwners.length && downOwners.length)){
+    if(upOwners.length) return {up:[...group], down:[], none:[]};
+    if(downOwners.length) return {up:[], down:[...group], none:[]};
+    return {up:[], down:[], none:[...group]};
+  }
+  const upSlots=upOwners.map(n=>n.slot);
+  const downSlots=downOwners.map(n=>n.slot);
+  const distToSet=(slot,set)=>Math.min(...set.map(s=>Math.abs(slot-s)));
+  const up=[], down=[];
+  for(const n of group){
+    const dir=noteStemDir(n);
+    if(dir==='up'){ up.push(n); continue; }
+    if(dir==='down'){ down.push(n); continue; }
+    // un-stemmed: assign to nearest owner-slot
+    if(distToSet(n.slot,upSlots)<=distToSet(n.slot,downSlots)) up.push(n);
+    else down.push(n);
+  }
+  return {up, down, none:[]};
+}
+
+// Returns the subset of `group` that the given note's chord belongs to.
+function chordSubgroupFor(group, note){
+  const sg=chordSubgroups(group);
+  if(sg.up.length && sg.down.length){
+    return sg.up.includes(note) ? sg.up : sg.down;
+  }
+  return group;
+}
+
 function renderedNoteX(note){
   const staffNotes=notes.filter(n=>n.si===note.si);
   const groups=chordsOnStaff(staffNotes);
   for(const group of groups){
     if(!group.some(n=>n.id===note.id))continue;
-    const sorted=[...group].sort((a,b)=>a.slot-b.slot);
-    const offsets=computeNoteOffsets(sorted, chordStemUp(group));
+    const sub=chordSubgroupFor(group, note);
+    const sorted=[...sub].sort((a,b)=>a.slot-b.slot);
+    const offsets=computeNoteOffsets(sorted, chordStemUp(sub));
     const idx=sorted.findIndex(n=>n.id===note.id);
     return sorted[0].x+offsets[idx];
   }
@@ -1265,12 +1328,24 @@ function stemAttach(nx,ny,stemUp,noteHead){
 // unshifted noteheads. For stem up: right edge of the leftmost (unshifted)
 // notehead. For stem down: left edge of the rightmost (unshifted) notehead.
 // This ensures the stem passes cleanly between all heads.
+//
+// In a mixed-stem group (stem-up chord + stem-down chord sharing an x), only
+// the notes belonging to the requested stem direction participate in stem-x
+// calculation — each chord's stem is positioned by its own notes.
 function chordStemAttachX(group, stemUp) {
   // Stem UP:   higher notes displaced RIGHT, lower notes at anchorX
   //            Stem runs up from right edge of anchorX notes → anchorX + r
   // Stem DOWN: higher notes displaced LEFT, lower notes at anchorX
   //            Stem runs down from left edge of anchorX notes → anchorX - r
-  const sorted=[...group].sort((a,b)=>a.slot-b.slot);
+  // In a mixed-stem group (stem-up chord + stem-down chord sharing an x), only
+  // the notes belonging to the requested stem direction participate in stem-x
+  // calculation — each chord's stem is positioned by its own notes.
+  const sg=chordSubgroups(group);
+  const subset = (sg.up.length && sg.down.length)
+    ? (stemUp!==false ? sg.up : sg.down)
+    : group;
+  const sorted=[...subset].sort((a,b)=>a.slot-b.slot);
+  if(!sorted.length) return group[0]?.x ?? 0;
   const anchorX=sorted[0].x;
   const headType=sorted[0].head;
   const inset=headType==='open'?STEM_INSET_OPEN:STEM_INSET_FILLED;
@@ -1981,6 +2056,17 @@ function effectiveAccidental(n){
   return keySigAccForSlot(n.si, n.x, n.slot);
 }
 function drawChordGroupPass(group,isGhost,pass){
+  // If the group contains notes with stems pointing both up and down (two
+  // independent voices sharing the same x position), draw each subgroup as
+  // its own chord. Each voice gets its own second-displacement layout.
+  if(!isGhost){
+    const sg=chordSubgroups(group);
+    if(sg.up.length && sg.down.length){
+      drawChordGroupPass(sg.up, false, pass);
+      drawChordGroupPass(sg.down, false, pass);
+      return;
+    }
+  }
   const a=isGhost?.38:1,col=isGhost?'#5580CC':INK,lCol=isGhost?'#5580CC':LINE;
   const sorted=[...group].sort((a,b)=>a.slot-b.slot);
   const anchorX=sorted[0].x,si=sorted[0].si;
@@ -3773,26 +3859,16 @@ function notationDown(x,y){
       if(d < r && d < hitTipDist){ hitTip=s; hitTipDist=d; }
     }
     if(hitTip){
-      const alreadySelected = sel && sel.type==='stemTip' && sel.id===hitTip.id;
-      // Desktop: always allow drag on first click. iPad: require two taps (matches note/accidental/tie pattern).
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        // Before capturing drag origin: if this stem is an endpoint of an
-        // auto-capped beam, snap its y2 (and the other endpoint's) to the
-        // currently-rendered values so the drag begins without a visible jump.
-        commitBeamSlantToVisual(hitTip.id);
-        sel={type:'stemTip',id:hitTip.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={y2:hitTip.y2, y1:hitTip.y1, up:hitTip.y2<hitTip.y1};
-      } else {
-        sel={type:'stemTip',id:hitTip.id};
-        selSet=[];
-        selDragging=false;
-        selDragStart=null;
-        selDragOrig=null;
-      }
+      historyPush();
+      // Before capturing drag origin: if this stem is an endpoint of an
+      // auto-capped beam, snap its y2 (and the other endpoint's) to the
+      // currently-rendered values so the drag begins without a visible jump.
+      commitBeamSlantToVisual(hitTip.id);
+      sel={type:'stemTip',id:hitTip.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={y2:hitTip.y2, y1:hitTip.y1, up:hitTip.y2<hitTip.y1};
       render();return;
     }
 
@@ -3845,25 +3921,15 @@ function notationDown(x,y){
       if((hitBeam.layer||0)!==0){
         primaryBeam=beams.find(b=>(b.layer||0)===0&&beamSharesPrimary(hitBeam,b))||hitBeam;
       }
-      const alreadySelected = sel && sel.type==='beam' && sel.id===primaryBeam.id;
-      // Desktop: always allow drag on first click. iPad: require two taps (matches note/accidental/tie pattern).
-      if(alreadySelected || !_isTouch){
-        const bs1=stems.find(s=>s.id===primaryBeam.stemId1);
-        const bs2=stems.find(s=>s.id===primaryBeam.stemId2);
-        const members = bs1&&bs2 ? beamMembers(bs1,bs2) : [];
-        historyPush();
-        sel={type:'beam',id:primaryBeam.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={members:members.map(s=>({id:s.id,y1:s.y1,y2:s.y2,up:s.y2<s.y1}))};
-      } else {
-        sel={type:'beam',id:primaryBeam.id};
-        selSet=[];
-        selDragging=false;
-        selDragStart=null;
-        selDragOrig=null;
-      }
+      const bs1=stems.find(s=>s.id===primaryBeam.stemId1);
+      const bs2=stems.find(s=>s.id===primaryBeam.stemId2);
+      const members = bs1&&bs2 ? beamMembers(bs1,bs2) : [];
+      historyPush();
+      sel={type:'beam',id:primaryBeam.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={members:members.map(s=>({id:s.id,y1:s.y1,y2:s.y2,up:s.y2<s.y1}))};
       render();return;
     }
 
@@ -3933,32 +3999,21 @@ function notationDown(x,y){
       if(Math.hypot(x-rx,y-ry) < NW*1.8) hitNote=n;
     });
     if(hitNote){
-      const alreadySelected = sel && sel.type==='note' && sel.id===hitNote.id;
-      // Desktop: always allow drag. iPad: require two taps.
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'note',id:hitNote.id};
-        selSet=[];
-        const staffNotes=notes.filter(n=>n.si===hitNote.si);
-        const groups=chordsOnStaff(staffNotes);
-        const group=groups.find(g=>g.some(n=>n.id===hitNote.id))||[hitNote];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={
-          x:hitNote.x, slot:hitNote.slot, si:hitNote.si,
-          chordOrigX: group.map(n=>({id:n.id, x:n.x})),
-          stemOrig: stems.filter(s=>group.some(n=>n.id===s.noteId))
-                         .map(s=>({id:s.id, x:s.x, y1:s.y1, y2:s.y2}))
-        };
-        playFreqs(group.map(n=>slotToFreq(n.slot,effectiveAccidental(n),activeClefType(n.si,n.x))));
-      } else {
-        sel={type:'note',id:hitNote.id};
-        selSet=[];
-        const staffNotes=notes.filter(n=>n.si===hitNote.si);
-        const groups=chordsOnStaff(staffNotes);
-        const group=groups.find(g=>g.some(n=>n.id===hitNote.id))||[hitNote];
-        playFreqs(group.map(n=>slotToFreq(n.slot,effectiveAccidental(n),activeClefType(n.si,n.x))));
-      }
+      historyPush();
+      sel={type:'note',id:hitNote.id};
+      selSet=[];
+      const staffNotes=notes.filter(n=>n.si===hitNote.si);
+      const groups=chordsOnStaff(staffNotes);
+      const group=groups.find(g=>g.some(n=>n.id===hitNote.id))||[hitNote];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={
+        x:hitNote.x, slot:hitNote.slot, si:hitNote.si,
+        chordOrigX: group.map(n=>({id:n.id, x:n.x})),
+        stemOrig: stems.filter(s=>group.some(n=>n.id===s.noteId))
+                       .map(s=>({id:s.id, x:s.x, y1:s.y1, y2:s.y2}))
+      };
+      playFreqs(group.map(n=>slotToFreq(n.slot,effectiveAccidental(n),activeClefType(n.si,n.x))));
       render();return;
     }
     // Clef hit
@@ -3969,18 +4024,12 @@ function notationDown(x,y){
       }
     }
     if(hitClef){
-      const alreadySelected = sel && sel.type==='clef' && sel.id===hitClef.id;
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'clef',id:hitClef.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={x:hitClef.x,si:hitClef.si};
-      } else {
-        sel={type:'clef',id:hitClef.id};
-        selSet=[];
-      }
+      historyPush();
+      sel={type:'clef',id:hitClef.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={x:hitClef.x,si:hitClef.si};
       render();return;
     }
     // Rest hit
@@ -3990,18 +4039,12 @@ function notationDown(x,y){
       if(Math.abs(x-r.x)<LS*1.5&&Math.abs(y-ry)<LS*2){ hitRest=r; break; }
     }
     if(hitRest){
-      const alreadySelected = sel && sel.type==='rest' && sel.id===hitRest.id;
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'rest',id:hitRest.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={x:hitRest.x,slot:hitRest.slot,si:hitRest.si};
-      } else {
-        sel={type:'rest',id:hitRest.id};
-        selSet=[];
-      }
+      historyPush();
+      sel={type:'rest',id:hitRest.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={x:hitRest.x,slot:hitRest.slot,si:hitRest.si};
       render();return;
     }
     // Key signature hit
@@ -4012,18 +4055,12 @@ function notationDown(x,y){
       if(x>=k.x-LS*0.5&&x<=k.x+w+LS*0.5&&Math.abs(y-ky)<SH/2+LS){ hitKs=k; break; }
     }
     if(hitKs){
-      const alreadySelected = sel && sel.type==='keysig' && sel.id===hitKs.id;
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'keysig',id:hitKs.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={x:hitKs.x,si:hitKs.si};
-      } else {
-        sel={type:'keysig',id:hitKs.id};
-        selSet=[];
-      }
+      historyPush();
+      sel={type:'keysig',id:hitKs.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={x:hitKs.x,si:hitKs.si};
       render();return;
     }
     // Stem body hit — exclude any stem that belongs to a beam (select via tip instead)
@@ -4035,18 +4072,12 @@ function notationDown(x,y){
       }
     }
     if(hitStem){
-      const alreadySelected = sel && sel.type==='stem' && sel.id===hitStem.id;
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'stem',id:hitStem.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={x:hitStem.x,y1:hitStem.y1,y2:hitStem.y2};
-      } else {
-        sel={type:'stem',id:hitStem.id};
-        selSet=[];
-      }
+      historyPush();
+      sel={type:'stem',id:hitStem.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={x:hitStem.x,y1:hitStem.y1,y2:hitStem.y2};
       render();return;
     }
     // Barline endpoint hit (top or bottom handle) — check before body
@@ -4073,18 +4104,12 @@ function notationDown(x,y){
       }
     }
     if(hitBl){
-      const alreadySelected = sel && sel.type==='barline' && sel.id===hitBl.id;
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'barline',id:hitBl.id};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={x:hitBl.x,y1:hitBl.y1,y2:hitBl.y2,s1:hitBl.s1,s2:hitBl.s2};
-      } else {
-        sel={type:'barline',id:hitBl.id};
-        selSet=[];
-      }
+      historyPush();
+      sel={type:'barline',id:hitBl.id};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={x:hitBl.x,y1:hitBl.y1,y2:hitBl.y2,s1:hitBl.s1,s2:hitBl.s2};
       render();return;
     }
     // Hairpin endpoint hit (if already selected)
@@ -4121,14 +4146,12 @@ function notationDown(x,y){
       if(hitHp) break;
     }
     if(hitHp){
-      if(sel && sel.type==='hairpin' && sel.id===hitHp.id){
-        historyPush();
-        selDragging=true; selDragStart={x,y};
-        selDragOrig={x1:hitHp.x1, y:hitHp.y, x2:hitHp.x2};
-        render();return;
-      }
+      historyPush();
       sel={type:'hairpin',id:hitHp.id};
-      selDragging=false;
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={x1:hitHp.x1, y:hitHp.y, x2:hitHp.x2};
       render();return;
     }
     // Clicked empty space — deselect
@@ -4169,16 +4192,10 @@ function notationDown(x,y){
     for(const tl of textLabels){
       const _h=tl._h||fsToLogical(tl.fontSize||DEFAULT_FONT_SIZE_PT)*1.9;
       if(x>=tl.x&&x<=tl.x+tl.w&&y>=tl.y&&y<=tl.y+_h){
-        const alreadySelected = sel && sel.type==='textLabel' && sel.id===tl.id;
-        if(alreadySelected || !_isTouch){
-          sel={type:'textLabel',id:tl.id};
-          selSet=[];
-          selDragging=true; selDragStart={x,y};
-          selDragOrig={x:tl.x,y:tl.y};
-        } else {
-          sel={type:'textLabel',id:tl.id};
-          selSet=[];
-        }
+        sel={type:'textLabel',id:tl.id};
+        selSet=[];
+        selDragging=true; selDragStart={x,y};
+        selDragOrig={x:tl.x,y:tl.y};
         render();return;
       }
     }
@@ -4189,20 +4206,14 @@ function notationDown(x,y){
       }
     }
     if(hitStrokeIdx >= 0){
-      const alreadySelected = sel && sel.type==='stroke' && sel.id===hitStrokeIdx;
-      if(alreadySelected || !_isTouch){
-        historyPush();
-        sel={type:'stroke', id:hitStrokeIdx};
-        selSet=[];
-        selDragging=true;
-        selDragStart={x,y};
-        selDragOrig={
-          origPts: allStrokes[hitStrokeIdx].pts.map(p=>({...p})),
-        };
-      } else {
-        sel={type:'stroke', id:hitStrokeIdx};
-        selSet=[];
-      }
+      historyPush();
+      sel={type:'stroke', id:hitStrokeIdx};
+      selSet=[];
+      selDragging=true;
+      selDragStart={x,y};
+      selDragOrig={
+        origPts: allStrokes[hitStrokeIdx].pts.map(p=>({...p})),
+      };
       render();return;
     }
     sel=null;selDragging=false;selDragOrig=null;selDragStart=null;
@@ -4952,7 +4963,25 @@ function notationUp(x,y){
         const compatible=stemIsUp(hit)===stemIsUp(beamStartStem)
           &&stemStaff(hit)===stemStaff(beamStartStem);
 
-        if(compatible&&startEpBeams.length>0){
+        if(compatible&&startEpBeams.length>0&&hitEpBeams.length>0
+           &&startEpBeams[0]!==hitEpBeams[0]){
+          // Both stems are endpoints of DIFFERENT primary beams — merge into one.
+          const beamA=startEpBeams[0];
+          const beamB=hitEpBeams[0];
+          const corners=[
+            stems.find(s=>s.id===beamA.stemId1),
+            stems.find(s=>s.id===beamA.stemId2),
+            stems.find(s=>s.id===beamB.stemId1),
+            stems.find(s=>s.id===beamB.stemId2),
+          ].filter(Boolean).sort((a,b)=>a.x-b.x);
+          if(corners.length>=2){
+            beamA.stemId1=corners[0].id;
+            beamA.stemId2=corners[corners.length-1].id;
+            beamA.manualSlant=false;
+            beams=beams.filter(b=>b.id!==beamB.id);
+            flags=flags.filter(f=>f.stemId!==beamStartStem.id&&f.stemId!==hit.id);
+          }
+        } else if(compatible&&startEpBeams.length>0){
           // Dragging FROM an existing beam endpoint to a new stem
           const beam=startEpBeams[0];
           const whichEnd=beam.stemId1===beamStartStem.id?'stemId1':'stemId2';
