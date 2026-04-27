@@ -7348,49 +7348,22 @@ function exportMidiSnippet(){
 
 document.getElementById('midiBtn').addEventListener('click', exportMidiSnippet);
 
-// ── Force reload of piano samples ────────────────────────────────────────
+// ── Force reload of audio ───────────────────────────────────────────────
 // Tone.js's AudioContext can wedge after the tab sleeps (laptop lid close,
-// long inactivity): the context reports 'running' but samples no longer fire,
-// or fire silently. The lighter fix (dispose sampler, resume context, reload)
-// handles the simple suspended-context case. The heavier case is the context
-// itself being unrecoverable, where only swapping in a fresh context works.
-// We do the full swap every time — slightly more expensive but reliably
-// covers both failure modes.
+// long inactivity). The wedge can survive disposing the sampler, resuming
+// the context, and even swapping in a fresh Tone.Context — the breakage is
+// below the JS layer (Chrome's audio process or macOS CoreAudio). The only
+// reliable recovery is a full page reload, which is what users have been
+// doing manually by closing and reopening the tab.
+//
+// Autosave (debounced 1s) plus the beforeunload handler ensure no work is
+// lost across the reload. We also flush synchronously here belt-and-suspenders.
 function reloadSounds(){
-  // Bail if a load is already in flight — prevents disposing a half-constructed
-  // sampler if the user mashes the button.
-  if(_samplerLoading) return;
-
-  // Re-disable scrub mode while audio is being rebuilt (mirrors initial-load UX)
-  const scrubBtn = document.querySelector('[data-mode="scrub"]');
-  if(scrubBtn) scrubBtn.classList.add('disabled');
-
-  // Tear down existing sampler if present
-  if(_sampler){
-    try { _sampler.dispose(); } catch(e){ /* already disposed or partially constructed */ }
-  }
-  _sampler = null;
-  _samplerReady = false;
-  _samplerLoading = false;
-
-  if(typeof Tone === 'undefined'){ return; }
-
-  // Swap in a fresh AudioContext. The old one may be wedged in a state that
-  // reports 'running' but produces no audio — only a brand-new context recovers.
-  const oldContext = Tone.context;
-  const newContext = new Tone.Context();
-  Tone.setContext(newContext);
-
-  // Dispose the old context after a brief delay to let any in-flight callbacks
-  // unwind. Failure here is non-fatal — worst case is a tiny memory leak that
-  // gets cleaned up when the tab closes.
-  setTimeout(() => {
-    try { oldContext.dispose(); } catch(e){}
-  }, 100);
-
-  // Resume the new context (requires user gesture — this click qualifies),
-  // then rebuild the sampler.
-  Tone.start().then(() => initSampler());
+  try {
+    const data = buildSaveData();
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+  } catch(e){ /* localStorage full or unavailable */ }
+  location.reload();
 }
 document.getElementById('reloadSoundsBtn').addEventListener('click', reloadSounds);
 
