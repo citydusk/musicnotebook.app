@@ -7351,8 +7351,11 @@ document.getElementById('midiBtn').addEventListener('click', exportMidiSnippet);
 // ── Force reload of piano samples ────────────────────────────────────────
 // Tone.js's AudioContext can wedge after the tab sleeps (laptop lid close,
 // long inactivity): the context reports 'running' but samples no longer fire,
-// or fire silently. Hard reset disposes the sampler, resets flags, resumes
-// the context, and reloads samples from scratch.
+// or fire silently. The lighter fix (dispose sampler, resume context, reload)
+// handles the simple suspended-context case. The heavier case is the context
+// itself being unrecoverable, where only swapping in a fresh context works.
+// We do the full swap every time — slightly more expensive but reliably
+// covers both failure modes.
 function reloadSounds(){
   // Bail if a load is already in flight — prevents disposing a half-constructed
   // sampler if the user mashes the button.
@@ -7370,11 +7373,24 @@ function reloadSounds(){
   _samplerReady = false;
   _samplerLoading = false;
 
-  // Resume context (was likely the underlying problem) then rebuild
-  const startup = (typeof Tone !== 'undefined' && Tone.context.state !== 'running')
-    ? Tone.start()
-    : Promise.resolve();
-  startup.then(() => initSampler());
+  if(typeof Tone === 'undefined'){ return; }
+
+  // Swap in a fresh AudioContext. The old one may be wedged in a state that
+  // reports 'running' but produces no audio — only a brand-new context recovers.
+  const oldContext = Tone.context;
+  const newContext = new Tone.Context();
+  Tone.setContext(newContext);
+
+  // Dispose the old context after a brief delay to let any in-flight callbacks
+  // unwind. Failure here is non-fatal — worst case is a tiny memory leak that
+  // gets cleaned up when the tab closes.
+  setTimeout(() => {
+    try { oldContext.dispose(); } catch(e){}
+  }, 100);
+
+  // Resume the new context (requires user gesture — this click qualifies),
+  // then rebuild the sampler.
+  Tone.start().then(() => initSampler());
 }
 document.getElementById('reloadSoundsBtn').addEventListener('click', reloadSounds);
 
