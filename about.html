@@ -49,5 +49,22 @@ a:hover{text-decoration:underline;}
 
 <a class="back" href="/">Back to Music Notebook</a>
 </div>
+
+  <!-- Place wherever you want the version to appear -->
+<span id="versionDisplay" style="opacity:0.5;font-size:11px;">version …</span>
+
+<script>
+fetch('/index.html')
+  .then(r => r.text())
+  .then(html => {
+    const m = html.match(/const VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (m) document.getElementById('versionDisplay').textContent = 'version ' + m[1];
+  })
+  .catch(() => {
+    // Network failure or file missing — leave the placeholder, don't show an error
+  });
+</script>
+
+  
 </body>
 </html>
