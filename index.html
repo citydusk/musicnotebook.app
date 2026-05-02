@@ -106,6 +106,34 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
 .grid-toggle input:checked + .track .thumb{left:12.5px;}
 .paper{padding:12px;display:flex;justify-content:center;min-width:fit-content;}
 .frame{width:100%;max-width:590px;position:relative;overflow:hidden;}
+
+/* ── Vertical toolbar mode ─────────────────────────────────────────────
+   Activated by body.vertical-tb (toggled by toggleVerticalToolbar() based
+   on per-page landscape flag and viewport width). Toolbar moves from the
+   top to the right edge as a vertical stack. Uses real CSS layout
+   (flex-direction:column), NOT CSS rotation — so hit zones, popover
+   anchoring via getBoundingClientRect, and inputs all work natively.
+   Icons stay upright because nothing is rotated. Falls back to the
+   normal horizontal layout on iPhone or in narrow viewports.
+
+   Two-column layout: the existing .desktop-break element (flex-basis:100%)
+   that forces a row-2 wrap in horizontal mode does double duty here — in
+   column-flex with wrap enabled, a child with 100% along the flex axis
+   forces a column break. So the same DOM split (notation tools above the
+   pen cluster) becomes left column / right column in vertical mode. */
+body.vertical-tb .outer{flex-direction:row-reverse;align-items:stretch;}
+body.vertical-tb .tb{flex-direction:column;flex-wrap:wrap;width:auto;min-width:104px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:6px 4px;gap:3px;align-items:flex-start;align-content:flex-start;justify-content:flex-start;overflow:hidden;border-left:0.5px solid rgba(0,0,0,0.1);box-sizing:border-box;}
+body.vertical-tb .grp{flex-direction:column;min-height:auto;}
+body.vertical-tb .scroll-area{flex:1;width:auto;min-width:0;}
+/* Force the row-break element to break into a new column in vertical mode.
+   In column-flex with flex-wrap:wrap, a child that fills the full main
+   axis (height) pushes everything after it to a new column. */
+body.vertical-tb .desktop-break{flex-basis:100% !important;width:0 !important;height:auto !important;margin:0 !important;}
+/* The pen cluster itself becomes a vertical pill. Its internal pieces
+   (penControls = smoothness toggle stacked over size selector; penColors =
+   2×2 color swatches) are already column-friendly and stay as they are.
+   !important is needed because penCluster has inline flex-direction. */
+body.vertical-tb #penCluster{flex-direction:column !important;height:auto !important;padding:2px 2px !important;align-items:center !important;}
 .frame.page-out{animation:pageOut .18s ease-in forwards;}
 .frame.page-in{animation:pageIn .18s ease-out forwards;}
 .frame.page-new{animation:pageNew .25s ease-out forwards;}
@@ -221,6 +249,8 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 #pageNum{position:absolute;bottom:20px;right:42px;z-index:3;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;font-size:13px;font-weight:400;color:#2A1E0E;user-select:none;opacity:0.55;height:28px;line-height:28px;display:flex;align-items:center;letter-spacing:0.01em;}
 #addPage{position:absolute;bottom:20px;right:14px;z-index:3;width:28px;height:28px;border-radius:50%;font-size:18px;font-weight:300;background:transparent;border:none;color:#1C1508;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .25s;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;opacity:0.25;}
 #addPage:hover{opacity:0.7;}
+.ap-opt:hover{background:rgba(28,21,8,0.07) !important;}
+.ap-opt:active{background:rgba(28,21,8,0.12) !important;}
 #bookmarkBtn{position:absolute;top:14px;right:14px;z-index:3;width:28px;height:28px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .2s;padding:0;opacity:0.15;}
 #bookmarkBtn:hover{opacity:0.5;}
 #bookmarkBtn.bookmarked{opacity:1;}
@@ -249,7 +279,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 #pageDots .pd.bookmarked{background:#E0382B;opacity:0.55;}
 #pageDots .pd.bookmarked.active{opacity:1;}
 @media print{
-  .tb, #tooltip, #confirmDlg, #keySigMenu, #restSubMenu, #textToolbar, #textLabelEditor, #pageNav, #pageNum, #addPage, #bookmarkBtn, #bookmarkPopover, #utilMenu, #accMenu, #barlineMenu, #iPhoneUndoPill, #zoomPill, #landscapeBlock, #iphoneSplash, #penSelectMenu, #radialAccMenu, #trebleClefMenu, #bassClefMenu{display:none !important;}
+  .tb, #tooltip, #confirmDlg, #keySigMenu, #restSubMenu, #textToolbar, #textLabelEditor, #pageNav, #pageNum, #addPage, #addPageMenu, #bookmarkBtn, #bookmarkPopover, #utilMenu, #accMenu, #barlineMenu, #iPhoneUndoPill, #zoomPill, #landscapeBlock, #iphoneSplash, #penSelectMenu, #radialAccMenu, #trebleClefMenu, #bassClefMenu{display:none !important;}
   html,body{height:auto;overflow:visible;background:#fff !important;margin:0;padding:0;}
   .outer{height:auto;width:100%;}
   .scroll-area{overflow:visible !important;height:auto !important;width:100%;}
@@ -274,9 +304,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   #penSelect{height:21px !important;}
   #penColors{height:44px !important;}
   #penColors span{width:14px !important;height:14px !important;}
-  /* Allow native vertical scroll on canvases — JS handlers consume the touch
-     when drawing/note placement is appropriate; otherwise the browser scrolls. */
-  #c, #fc{touch-action:pan-y;}
+  #c{background:#E0D0AD !important;}
   @media (hover:none){.btn:not(.on):not(.muted):hover{background:transparent;color:var(--btn-color)}}
   /* iOS-style dialog on touch devices */
   #confirmDlg{background:rgba(0,0,0,0.4);}
@@ -694,6 +722,16 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
     <button class="bp-remove" type="button">Remove Bookmark</button>
   </div>
   <button id="addPage" title="add page">+</button>
+  <div id="addPageMenu" style="display:none;position:absolute;background:rgba(248,243,231,0.98);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:0.5px solid rgba(0,0,0,0.18);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.15);z-index:99999;padding:4px;flex-direction:column;gap:0;min-width:140px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#1C1508;">
+    <button class="ap-opt" data-orient="portrait" type="button" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:transparent;border:none;font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border-radius:4px;text-align:left;width:100%;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1" style="flex:none;"><rect x="2" y="1" width="10" height="14" rx="0.5"/><line x1="3.5" y1="5" x2="10.5" y2="5"/><line x1="3.5" y1="7" x2="10.5" y2="7"/><line x1="3.5" y1="9" x2="10.5" y2="9"/><line x1="3.5" y1="11" x2="10.5" y2="11"/></svg>
+      <span>Portrait page</span>
+    </button>
+    <button class="ap-opt" data-orient="landscape" type="button" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:transparent;border:none;font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border-radius:4px;text-align:left;width:100%;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1" style="flex:none;"><rect x="1" y="2" width="14" height="10" rx="0.5"/><line x1="2.5" y1="5" x2="13.5" y2="5"/><line x1="2.5" y1="7" x2="13.5" y2="7"/><line x1="2.5" y1="9" x2="13.5" y2="9"/></svg>
+      <span>Landscape page</span>
+    </button>
+  </div>
 </div></div>
 </div>
 </div>
@@ -782,69 +820,195 @@ const cx = cv.getContext('2d');
 const _isIPhone = /iPhone/.test(navigator.userAgent) || (window.matchMedia('(pointer:coarse)').matches && window.screen.width <= 430);
 const _isStandalone = (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
 const _isStandaloneiPad = _isStandalone && !_isIPhone;
-const LW = 700;
-const MM = 100 / 25.4;          // logical px per mm at 96dpi baseline
-const _iPhoneLS = _isIPhone ? (20.9 * MM) / 4 : 0;
-const ML = _isIPhone ? _iPhoneLS : 50, MR = _isIPhone ? _iPhoneLS : 50, MB = _isIPhone ? 10 : 100; // page margins
-const SH  = _isIPhone ? 20.9 * MM : 8.0 * MM;  // staff height — 2.3x on iPhone
-const LS  = SH / 4;   // one staff space (line spacing)
-const STEP = LS / 2;  // one slot = one half-step vertical distance
-const SC = _isIPhone ? 4 : 8;   // number of staves on the page
+// ───────────────────────────────────────────────────────────────────────
+// PAGE GEOMETRY
+// ───────────────────────────────────────────────────────────────────────
+// Pages can be portrait or landscape (per-page; pages[i].landscape boolean).
+// All paper-relative geometry (margins, staff height, note size, beam
+// thickness, etc.) must therefore be mutable rather than const, and gets
+// reassigned by applyPageGeometry() whenever a page is loaded.
+//
+// Things that stay const: physical-pixel thresholds (RADIAL_DEAD, RADIAL_HIT,
+// MAX_LEDGER_SLOT_*), pure ratios (HA, LEDGER_OVERHANG), and shapes
+// (LINE_W is fixed per device, not per page).
+//
+// iPhone is portrait-only — landscape is desktop/iPad only — so the iPhone
+// branch keeps its existing initialization here at module load. On
+// desktop/iPad the values below are starting defaults; applyPageGeometry()
+// will overwrite them on every loadPage().
 
-// iPhone: measure actual toolbar height, use remaining viewport for canvas
+const MM = 100 / 25.4;          // logical px per mm at 96dpi baseline
+const HA = -15 * Math.PI / 180; // notehead rotation
+const LEDGER_OVERHANG = 1.8;
+const MAX_LEDGER_SLOT_ABOVE = -8;
+const MAX_LEDGER_SLOT_BELOW = 16;
+const MAX_LEDGER_TAP_ABOVE = _isIPhone ? -6 : -8;
+const MAX_LEDGER_TAP_BELOW = _isIPhone ? 14 : 16;
+const MAX_COLS   = 4;
+const LINE_W = _isIPhone ? 1.4 : 0.6;
+const _isTouch = window.matchMedia('(pointer:coarse)').matches;
+const PAPER = (_isTouch && !_isIPhone) ? '#E0D0AD' : '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
+
+// iPhone-only intermediates (used during initial portrait setup below)
+const _iPhoneLS = _isIPhone ? (20.9 * MM) / 4 : 0;
 const _iPhoneTBHeight = _isIPhone ? (document.querySelector('.tb')?.offsetHeight || 90) : 0;
 const _iPhoneViewH = _isIPhone ? (window.visualViewport ? window.visualViewport.height : window.innerHeight) : 0;
 const _iPhoneCanvasH = _isIPhone ? _iPhoneViewH - _iPhoneTBHeight : 0;
 const _iPhoneRatio = _isIPhone ? _iPhoneCanvasH / window.innerWidth : 0;
-let LH = _isIPhone ? Math.round(LW * _iPhoneRatio) : 900;
-
-// iPhone: calculate gap to distribute staves evenly with proper margins
 const _iPhoneMT = 15;
 const _iPhoneMB = 30;
-const _iPhoneAvail = _isIPhone ? LH - _iPhoneMT - _iPhoneMB : 0;
-const _iPhoneGap = _isIPhone ? (_iPhoneAvail - SC * SH) / (SC - 1) : 0;
-const GAP = _isIPhone ? LS * 7 : 16.0 * MM;
-const CONTENT_H = SC * SH + (SC-1) * GAP + MB;
-let MT = _isIPhone ? Math.round((LH - CONTENT_H) / 2) : LH - CONTENT_H;
-const LM = ML, RM = LW - MR;
-const NOTE_MIN_X = LM + 6;
-const HA = -15 * Math.PI / 180;
-const LINE_W = _isIPhone ? 1.4 : 0.6;
-const OPEN_LW = LS * 0.2;
-const NH = STEP * 0.97;
-const NW = NH * 1.55;
-const NW_open = NW - OPEN_LW / 2;
-const NH_open = NH - OPEN_LW / 2;
-const LEDGER_OVERHANG = 1.8;
-const LEDGER_W = NW + LEDGER_OVERHANG;
-const MAX_LEDGER_SLOT_ABOVE = -8;
-const MAX_LEDGER_SLOT_BELOW = 16;
-// iPhone: stricter limit for single-tap placement (3 ledger lines)
-const MAX_LEDGER_TAP_ABOVE = _isIPhone ? -6 : -8;
-const MAX_LEDGER_TAP_BELOW = _isIPhone ? 14 : 16;
-const _isTouch = window.matchMedia('(pointer:coarse)').matches;
-// iPad finger-scroll rule: on iPad, a one-finger touch should fall through to native
-// page scroll (rather than draw / place a note) when either a Pencil has been detected
-// at any point in this session, or no tool is selected. This lets composers scroll
-// long pages with one finger in landscape. Two-finger gestures and Pencil input are
-// unaffected. iPhone keeps its existing behavior (page is locked to viewport anyway).
-function _shouldFingerScroll(e){
-  if(!_isTouch || _isIPhone) return false;
-  if(e.touches && e.touches.length !== 1) return false;
-  const t = e.touches && e.touches[0];
-  if(!t || t.touchType === 'stylus') return false;
-  return _pencilDetected || mode === 'none';
+
+// All of the following are reassigned by applyPageGeometry() on each
+// loadPage(). Initial values here are the portrait defaults and are used
+// at module load time before any page is loaded (so render code that runs
+// during boot finds usable values).
+let LW, LH, ML, MR, MB, SH, LS, STEP, SC, GAP, CONTENT_H, MT;
+let LM, RM, NOTE_MIN_X, OPEN_LW, NH, NW, NW_open, NH_open, LEDGER_W;
+let SECOND_OFFSET, STEM_LW, SNAP_R, STEM_INSET_FILLED, STEM_INSET_OPEN;
+let ACC_HALF_H, ACC_COL_W, ACC_GAP;
+let minX, maxX;  // note-placement clamp; depends on NOTE_MIN_X and RM
+// Tier 2 geometry — these names are declared up front so they exist by
+// the time _setTier2Geometry() runs from inside _setPortraitGeometry()
+// at module load. Their original declarations further down in the file
+// are now bare comments so the file structure is preserved.
+let BARLINE_W, BARLINE_SNAP;
+let DOT_R, DOT_GAP;
+let KEYSIG_SPACING;
+let FINAL_GAP, FINAL_THICK;
+let HP_SPREAD, HP_LW;
+let DASH_LW, DASH_SEG, DASH_GAP;
+let BEAM_SNAP_R, BEAM_H, BEAM_GAP;
+let ERASE_R;
+
+// Compute portrait geometry into the live globals. Called on every
+// loadPage() of a portrait page, and once at module load below.
+function _setPortraitGeometry(){
+  LW = 700;
+  ML = _isIPhone ? _iPhoneLS : 50;
+  MR = _isIPhone ? _iPhoneLS : 50;
+  MB = _isIPhone ? 10 : 100;
+  SH = _isIPhone ? 20.9 * MM : 8.0 * MM;
+  LS = SH / 4;
+  STEP = LS / 2;
+  SC = _isIPhone ? 4 : 8;
+  LH = _isIPhone ? Math.round(LW * _iPhoneRatio) : 900;
+  GAP = _isIPhone ? LS * 7 : 16.0 * MM;
+  CONTENT_H = SC * SH + (SC-1) * GAP + MB;
+  MT = _isIPhone ? Math.round((LH - CONTENT_H) / 2) : LH - CONTENT_H;
+  _setDerivedGeometry();
 }
-const PAPER = '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
-const SECOND_OFFSET = NW * 1.90;
-const STEM_LW = LINE_W * 1.6;
-const SNAP_R = NW * 4;
-const STEM_INSET_FILLED = STEM_LW * 0.6;
-const STEM_INSET_OPEN   = OPEN_LW / 2;
-const ACC_HALF_H = { sharp: LS*2.107, flat: LS*2.0, natural: LS*2.5 };
-const ACC_COL_W  = LS * 1.15;
-const ACC_GAP    = NW * 0.2;
-const MAX_COLS   = 4;
+
+// Compute landscape geometry. Same paper width as portrait LH (i.e. 900
+// logical px wide), height = 700 — like rotating a portrait page onto its
+// side. 8 staves still, but staff height scales down by the height ratio
+// so they fit. Margins and gaps scale too. Not used on iPhone.
+function _setLandscapeGeometry(){
+  LW = 900;
+  LH = 700;
+  // Vertical scale factor: how much smaller the landscape page is in the
+  // dimension that holds the staves. All vertical-rhythm values (staff
+  // height, gaps, top/bottom margins) scale by this. Horizontal margins
+  // (ML, MR) stay the same absolute size since the page is wider.
+  const vScale = LH / 900;
+  ML = 50;
+  MR = 50;
+  MB = 100 * vScale;
+  SH = 8.0 * MM * vScale;
+  LS = SH / 4;
+  STEP = LS / 2;
+  SC = 8;
+  GAP = 16.0 * MM * vScale;
+  CONTENT_H = SC * SH + (SC-1) * GAP + MB;
+  MT = LH - CONTENT_H;
+  _setDerivedGeometry();
+}
+
+// Recompute every value derived from LW/LH/SH/LS/STEP/etc. Called by both
+// _setPortraitGeometry and _setLandscapeGeometry at the end. Anything that
+// depends on the primary geometry must live here, not in the setters.
+function _setDerivedGeometry(){
+  LM = ML;
+  RM = LW - MR;
+  NOTE_MIN_X = LM + 6;
+  OPEN_LW = LS * 0.2;
+  NH = STEP * 0.97;
+  NW = NH * 1.55;
+  NW_open = NW - OPEN_LW / 2;
+  NH_open = NH - OPEN_LW / 2;
+  LEDGER_W = NW + LEDGER_OVERHANG;
+  SECOND_OFFSET = NW * 1.90;
+  STEM_LW = LINE_W * 1.6;
+  SNAP_R = NW * 4;
+  STEM_INSET_FILLED = STEM_LW * 0.6;
+  STEM_INSET_OPEN = OPEN_LW / 2;
+  ACC_HALF_H = { sharp: LS*2.107, flat: LS*2.0, natural: LS*2.5 };
+  ACC_COL_W = LS * 1.15;
+  ACC_GAP = NW * 0.2;
+  // Note placement clamp bounds — also live values, recomputed here so
+  // dragging/placing on a landscape page uses the wider RM.
+  minX = NOTE_MIN_X;
+  maxX = RM - 4;
+  // Tier 2 derived values (BARLINE_W, BARLINE_SNAP, DOT_R, DOT_GAP,
+  // KEYSIG_SPACING, FINAL_GAP, FINAL_THICK, HP_SPREAD, HP_LW, DASH_LW,
+  // DASH_SEG, DASH_GAP, BEAM_SNAP_R, BEAM_H, BEAM_GAP, ERASE_R) are
+  // assigned by _setTier2Geometry() — defined later in the file because
+  // they reference values like BARLINE_W that are declared further down.
+  if(typeof _setTier2Geometry === 'function') _setTier2Geometry();
+}
+
+// Apply portrait or landscape geometry. iPhone always portrait.
+function applyPageGeometry(landscape){
+  if(_isIPhone || !landscape) _setPortraitGeometry();
+  else _setLandscapeGeometry();
+}
+
+// Toggle the body.vertical-tb class based on whether the current page is
+// landscape AND the viewport is wide enough to comfortably accommodate a
+// side toolbar. iPhone is excluded — it has its own layout. The threshold
+// (900 css px) covers iPad-landscape (smallest is ~1133) and most desktop
+// browsers; narrow desktop windows fall back to the horizontal toolbar
+// since cramming the toolbar onto a side without enough width would
+// shrink the page below useful size.
+function toggleVerticalToolbar(){
+  if(_isIPhone){ document.body.classList.remove('vertical-tb'); return; }
+  const pg = (typeof pages !== 'undefined' && pages[currentPage]) ? pages[currentPage] : null;
+  const isLandscapePage = !!(pg && pg.landscape);
+  const availW = window.innerWidth || 0;
+  const wantVertical = isLandscapePage && availW >= 900;
+  document.body.classList.toggle('vertical-tb', wantVertical);
+}
+
+// Initial portrait geometry — must run before any code below references
+// LW/LH/SH/etc. Tier 2 values get filled in by their own block further
+// down once it loads; _setDerivedGeometry calls _setTier2Geometry if
+// available, so reassignments after this point work too.
+_setPortraitGeometry();
+
+// Tier 2 geometry — values that depend on tier 1 (BARLINE_W from STEM_LW,
+// DOT_R from NH, etc.) plus a few that depend on tier 2 itself (FINAL_GAP
+// from BARLINE_W, HP_LW = BARLINE_W). Reassigned every time the page
+// geometry changes, via _setDerivedGeometry → _setTier2Geometry.
+function _setTier2Geometry(){
+  BARLINE_W = STEM_LW * 1.4;
+  BARLINE_SNAP = LS * 3;
+  DOT_R   = NH * 0.40;
+  DOT_GAP = NW * 0.35 + DOT_R;
+  KEYSIG_SPACING = LS * 0.85;
+  FINAL_GAP   = BARLINE_W * 1.85;
+  FINAL_THICK = BARLINE_W * 2.85;
+  HP_SPREAD = LS * 0.85;
+  HP_LW     = BARLINE_W;
+  DASH_LW = BARLINE_W;
+  DASH_SEG = LS * 0.8;
+  DASH_GAP = LS * 0.5;
+  BEAM_SNAP_R = LS * 5;
+  BEAM_H      = LS * 0.45;
+  BEAM_GAP    = LS * 0.12;
+  ERASE_R = NW * 1.3;
+}
+// First fill — _setPortraitGeometry already ran above but couldn't reach
+// _setTier2Geometry yet (it didn't exist). Call directly now.
+_setTier2Geometry();
 
 // Primary notation state arrays. Each array has a monotonic id counter.
 // Objects are never mutated in place during undo — historyPush() snapshots
@@ -922,10 +1086,21 @@ function saveCurrentPage(){
   pages[currentPage].redoStack = redoStack.map(r=>r);
 }
 
-// Load a page's data into the working arrays
+// Load a page's data into the working arrays. Applies per-page geometry
+// (portrait or landscape) BEFORE swapping the data in, so any computations
+// that happen during data ingestion already see the correct LW/LH/SH/etc.
 function loadPage(idx){
   const pg = pages[idx];
   if(!pg) return;
+  // Apply this page's geometry first. resize() runs at the end via the
+  // caller (switchPage / restoreSaveData), which then re-fits the canvas
+  // to the new aspect ratio.
+  applyPageGeometry(!!pg.landscape);
+  // Toggle vertical toolbar BEFORE resize() runs so the canvas's available
+  // width is computed against the new toolbar layout. resize() reads
+  // .scroll-area's clientWidth which depends on whether the toolbar is on
+  // top (full width) or on the side (reduced width).
+  toggleVerticalToolbar();
   const s = pg.snap || emptyPageSnap();
   notes      = (s.notes||[]).map(n=>({...n}));
   stems      = (s.stems||[]).map(s2=>({...s2}));
@@ -952,6 +1127,10 @@ function switchPage(idx){
   saveCurrentPage();
   currentPage = idx;
   loadPage(idx);
+  // Re-fit canvas to the new page's aspect ratio. loadPage() already
+  // applied the per-page geometry (LW/LH/SH/etc.), so resize() now sees
+  // the new logical dimensions and updates cssW/cssH/.frame width.
+  resize();
   updatePageBar();
   render();
   fd.redrawAll();
@@ -1056,8 +1235,8 @@ let rectSelStart  = null;   // {x,y} corner where drag began
 let pasteAnchor = null;     // logical {x} of last empty-click in select/lasso mode
 
 // Barline state
-const BARLINE_W = STEM_LW * 1.4;        // twice stem width
-const BARLINE_SNAP = LS * 3;           // snap radius to staff edge (logical px)
+// BARLINE_W = stem width × 1.4; BARLINE_SNAP = LS × 3.
+// Both declared near LW/LH/etc. above and assigned by _setTier2Geometry().
 let blDragging = false;
 let blX = null;                        // snapped x of barline being drawn
 let blStartStaff = null;               // staff index where drag started
@@ -1452,6 +1631,11 @@ let zoomLevel = 1.0;
 const ZOOM_MIN = 0.5, ZOOM_MAX = 3.0, ZOOM_STEP = 0.08;
 
 function resize(){
+  // Re-evaluate toolbar layout in case the viewport changed (rotation,
+  // window resize). Must happen BEFORE reading scroll-area dimensions —
+  // changing body.vertical-tb reflows the layout, so .scroll-area's
+  // clientWidth depends on whether the toolbar is on top or on the side.
+  toggleVerticalToolbar();
   // Notation canvas: DPR scaling applied via transform, not canvas dimensions
   const dpr=window.devicePixelRatio||1;
   const scrollArea2 = document.querySelector('.scroll-area');
@@ -1463,16 +1647,28 @@ function resize(){
   // At zoom 1.0 the canvas fits entirely in the window
   let baseW;
   const _isLandscapeTablet = _isTouch && !_isIPhone && window.matchMedia('(orientation:landscape)').matches;
+  // Is the current page landscape? (Asks the page state, not the device.)
+  const _curPageLandscape = !!(pages && pages[currentPage] && pages[currentPage].landscape);
   if(_isIPhone){
     // iPhone: read the frame's actual rendered width — never exceeds screen
     const frame = document.querySelector('.frame');
     baseW = frame.clientWidth || Math.min(availW, window.innerWidth);
-  } else if(_isLandscapeTablet){
-    // iPad landscape: keep page at portrait width, let height overflow for scrolling
+  } else if(_isLandscapeTablet && !_curPageLandscape){
+    // iPad landscape with a PORTRAIT page: keep page at portrait width,
+    // let height overflow for scrolling. Landscape pages skip this cap so
+    // they can use the full horizontal room (the side toolbar, when active,
+    // already takes its share of the width via flex layout).
     baseW = Math.min(availW, 590);
   } else {
-    // Desktop/iPad portrait: constrained by whichever axis is tighter
-    baseW = Math.min(availW, availH * LW / LH);
+    // Desktop/iPad portrait, OR landscape page in any orientation.
+    // Use the page's LONG side as the reference so portrait and landscape
+    // pages render at the same physical scale on screen — they're the
+    // same piece of paper, just oriented differently. longSide is 900 for
+    // both (portrait LH=900, landscape LW=900). The scale factor is set
+    // by whichever viewport axis is tighter relative to that long side.
+    const longSide = Math.max(LW, LH);
+    const scale = Math.min(availW / longSide, availH / longSide);
+    baseW = LW * scale;
   }
   const cssW  = Math.round(baseW * zoomLevel);
   _lastCssW = cssW;
@@ -1513,8 +1709,15 @@ function resize(){
   // Allow horizontal scroll when zoomed in
   document.querySelector('.scroll-area').style.overflowX = zoomLevel > 1.01 ? 'auto' : 'hidden';
 
-  // Scale page UI elements proportionally to canvas width
-  const s = cssW / (_isIPhone ? 393 : 560); // reference width per device
+  // Scale page-corner UI (page number, +, bookmark, page-nav, watermark)
+  // by the rendered height of a staff in CSS px. Staves are designed to
+  // be visually identical on portrait and landscape pages (vScale-adjusted
+  // SH), so anchoring UI to staff size gives the same physical screen
+  // size regardless of orientation. The reference 25.2 = SH * cssW/LW
+  // at the design baseline (8mm staff, 560 css per 700 logical = 0.8
+  // scale, 31.5 logical × 0.8 ≈ 25.2 css). iPhone keeps its old reference;
+  // it's portrait-only so orientation invariance doesn't apply there.
+  const s = _isIPhone ? cssW / 393 : (SH * cssW / LW) / 25.2;
   const pageNum = document.getElementById('pageNum');
   const addPage = document.getElementById('addPage');
   const pageNav = document.getElementById('pageNav');
@@ -1596,7 +1799,9 @@ function drawWatermark(){
   cx.globalAlpha = 0.55;
   // Align vertically with the center of the + button / page nav
   // The + button sits at CSS bottom: 14*s, height 28*s, so center is 28*s from frame bottom
-  const s = _lastCssW / (_isIPhone ? 393 : 560);
+  // Match the staff-relative scaling used for UI elements in resize() so
+  // the watermark stays the same physical size on portrait and landscape pages.
+  const s = _isIPhone ? _lastCssW / 393 : (SH * _lastCssW / LW) / 25.2;
   const centerFromBot = 34 * s; // CSS px from bottom to + center (bottom:20 + height:28/2)
   const wmCenterY = LH - (centerFromBot * LH / _lastCssH);
   const iconSize = 14;
@@ -1818,8 +2023,7 @@ function drawHalfRest(x, y, col, alpha){
   drawGlyph(ox, oy, scale, getBlockRestCmds(), col, alpha);
 }
 
-const DOT_R   = NH * 0.40;
-const DOT_GAP = NW * 0.35 + DOT_R;   // gap from right edge of notehead to dot centre
+// DOT_R, DOT_GAP declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 function drawDot(dotX,ny,slot,col,alpha){
   // If the note sits on a line (even slot), nudge the dot up one full space.
   const dotY = (slot % 2 === 0) ? ny - STEP : ny;
@@ -1957,7 +2161,7 @@ const FLAT_SLOTS = {
   treble: [4, 1, 5, 2, 6, 3, 7],  // B4 E5 A4 D5 G4 C5 F4
   bass:   [6, 3, 7, 4, 8, 5, 9],  // D3 G3 C3 F3 Bb2 Eb3 Ab2
 };
-const KEYSIG_SPACING = LS * 0.85; // horizontal spacing between accidentals in key sig
+// KEYSIG_SPACING declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 
 // Active key signature at position (si, x): rightmost keySig on that staff at or before x
 function activeKeySig(si, x){
@@ -2164,8 +2368,7 @@ function barlineY(s1, s2) {
   return { y1: stTop(s1), y2: stTop(s2) + SH };
 }
 
-const FINAL_GAP   = BARLINE_W * 1.85;
-const FINAL_THICK = BARLINE_W * 2.85;
+// FINAL_GAP, FINAL_THICK declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 
 function drawBarline(x, y1, y2, col, alpha, final) {
   cx.save();
@@ -2185,8 +2388,7 @@ function drawBarline(x, y1, y2, col, alpha, final) {
 }
 
 // ── Hairpin (crescendo/decrescendo) drawing ─────────────────────────────
-const HP_SPREAD = LS * 0.85;  // half-opening at the wide end
-const HP_LW     = BARLINE_W;  // match fine (0.5) pen visual weight
+// HP_SPREAD, HP_LW declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 function drawHairpin(h, col, alpha){
   cx.save();
   cx.globalAlpha = alpha ?? 1;
@@ -2202,9 +2404,7 @@ function drawHairpin(h, col, alpha){
   cx.stroke();
   cx.restore();
 }
-const DASH_LW = BARLINE_W;
-const DASH_SEG = LS * 0.8;  // dash segment length in logical coords
-const DASH_GAP = LS * 0.5;  // gap between dashes
+// DASH_LW, DASH_SEG, DASH_GAP declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 function drawDashedLine(x1, y1, x2, y2, col, alpha){
   cx.save();
   cx.globalAlpha = alpha ?? 1;
@@ -2364,9 +2564,7 @@ function drawClef(clef, isGhost, colOverride) {
 }
 // ── Beam helpers ────────────────────────────────────────────────────────
 
-const BEAM_SNAP_R = LS * 5;      // generous snap radius to find a stem tip
-const BEAM_H      = LS * 0.45;    // beam thickness
-const BEAM_GAP    = LS * 0.12;    // gap between stacked beams
+// BEAM_SNAP_R, BEAM_H, BEAM_GAP declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 
 // Return the tip y of a stem (y2 = free end)
 function stemTipY(s){ return s.y2; }
@@ -3569,10 +3767,13 @@ function logicalPos(e){
   return{x:(t.clientX-r.left)*(LW/r.width),y:(t.clientY-r.top)*(LH/r.height)};
 }
 
-const minX=NOTE_MIN_X,maxX=RM-4;
+// Note-placement clamp range lives in the geometry section above (declared
+// near LW/LH/etc. so it's defined before _setDerivedGeometry runs at module
+// load). Reassigned by _setDerivedGeometry — landscape pages have a wider
+// RM, so this must not be captured at module load.
 
 // Erase everything near (x,y) — used for both click and scrub
-const ERASE_R = NW * 1.3; // tight radius around notehead size
+// ERASE_R declared near LW/LH/etc. above; assigned by _setTier2Geometry().
 function eraseAt(x, y) {
   let changed = false;
   // Clefs
@@ -5491,7 +5692,6 @@ cv.addEventListener('mouseleave',()=>{
 });
 cv.addEventListener('touchstart',e=>{
   if(isDrawMode()) return;
-  if(_shouldFingerScroll(e)) return; // let native scroll handle it
   const t0 = e.touches[0];
   if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
   const fingerAllowedModes = ['select','lasso','scrub','erase','none'];
@@ -5518,7 +5718,6 @@ cv.addEventListener('touchstart',e=>{
 },{passive:false});
 cv.addEventListener('touchmove', e=>{
   if(isDrawMode())return;
-  if(_shouldFingerScroll(e)) return; // let native scroll handle it
   e.preventDefault();
   const t0=e.touches[0];
   const hadRadialTimer = !!_radialTimer;
@@ -6222,7 +6421,6 @@ const fd = (() => {
   }, { passive: true });
   // Touch events: handle BOTH drawing and notation passthrough
   canvas.addEventListener('touchstart', e => {
-    if(_shouldFingerScroll(e)) return; // let native scroll handle it
     e.preventDefault();
     if(e.target !== canvas) return; // not our touch — let it reach cv
     e.stopPropagation(); // prevent cv from also handling this touch
@@ -6291,7 +6489,6 @@ const fd = (() => {
     }
   }, { passive: false });
   canvas.addEventListener('touchmove', e => {
-    if(_shouldFingerScroll(e)) return; // let native scroll handle it
     e.preventDefault();
     e.stopPropagation();
     if (isDrawMode()) {
@@ -6797,6 +6994,10 @@ function buildSaveData(){
     pages: pages.map(pg => pg.snap || emptyPageSnap()),
     bookmarks: pages.map(pg => pg.bookmark || null),
     createdAt: pages.map(pg => pg.createdAt || null),
+    // Per-page landscape flag. Parallel array; missing/false = portrait.
+    // Older save files lack this and load as all-portrait, which preserves
+    // their existing visual layout.
+    landscape: pages.map(pg => !!pg.landscape),
   };
 }
 
@@ -6868,6 +7069,14 @@ function restoreSaveData(data){
       if(data.createdAt[i]) pages[i].createdAt = data.createdAt[i];
     }
   }
+  // Restore per-page landscape flag (parallel array; older saves lack it,
+  // in which case all pages remain portrait — matching the visual layout
+  // of those saves at the time they were created).
+  if(Array.isArray(data.landscape)){
+    for(let i = 0; i < pages.length; i++){
+      if(data.landscape[i]) pages[i].landscape = true;
+    }
+  }
   // Migration: pre-existing beams in loaded notebooks may have slants > 1 space
   // that the user previously dragged into place. Mark such primary beams as
   // manualSlant so the new 1-space auto cap doesn't retroactively flatten them.
@@ -6887,6 +7096,10 @@ function restoreSaveData(data){
     }
   }
   loadPage(currentPage);
+  // Re-fit canvas in case the loaded page is landscape (or differs from
+  // what was active before). loadPage() applied the geometry; resize()
+  // updates cssW/cssH/frame width.
+  resize();
   updatePageBar();
   // Reset interaction state
   sel=null; selSet=[]; selDragging=false; selDragOrig=null; selDragStart=null;
@@ -6982,9 +7195,22 @@ document.getElementById('printBtn').addEventListener('click',()=>{
   sel=null; selSet=[]; ghost=null; alignGuide=null; scrubX=null; scrubY=null;
   _printing = true;
   render(); fd.redrawAll();
+  // The base @page rule in our print CSS is 'letter portrait'. For a
+  // landscape page, inject a temporary stylesheet that overrides it. Some
+  // browsers (Safari, Firefox) require the @page size to match the actual
+  // paper orientation for correct scaling — without this, a 900×700 canvas
+  // gets shrunk to fit a portrait sheet's narrow width.
+  let printStyleEl = null;
+  if(pages[currentPage] && pages[currentPage].landscape){
+    printStyleEl = document.createElement('style');
+    printStyleEl.id = 'mskp_print_landscape';
+    printStyleEl.textContent = '@media print{@page{size:letter landscape;}}';
+    document.head.appendChild(printStyleEl);
+  }
   function restoreAfterPrint(){
     window.removeEventListener('afterprint', restoreAfterPrint);
     _printing = false;
+    if(printStyleEl){ printStyleEl.remove(); printStyleEl = null; }
     sel=savedSel; selSet=savedSelSet; ghost=savedGhost; alignGuide=savedAlignGuide;
     scrubX=savedScrubX; scrubY=savedScrubY;
     render(); fd.redrawAll();
@@ -8045,7 +8271,12 @@ _pageNav.addEventListener('touchstart', () => {
   _navHideTimer = setTimeout(() => _pageNav.classList.remove('visible'), 3000);
 }, {passive: true});
 
-document.getElementById('addPage').addEventListener('click', ()=>{
+// ── Add-page handler ────────────────────────────────────────────────────
+// Single tap = portrait page (existing behaviour). Long-press (~500ms) =
+// reveal a small menu with Portrait/Landscape options. iPhone gets the
+// single-tap path only — landscape isn't supported there (the geometry
+// recompute pattern in resize() is iPhone-specific and orientation-only).
+function createNewPage(landscape){
   commitTextEditor();
   const frame = document.querySelector('.frame');
   frame.classList.remove('page-in','page-out');
@@ -8053,9 +8284,14 @@ document.getElementById('addPage').addEventListener('click', ()=>{
   setTimeout(()=>{
     saveCurrentPage();
     const newIdx = currentPage + 1;
-    pages.splice(newIdx, 0, { snap: emptyPageSnap(), history:[], redoStack:[], createdAt: new Date().toISOString() });
+    const newPage = { snap: emptyPageSnap(), history:[], redoStack:[], createdAt: new Date().toISOString() };
+    if(landscape) newPage.landscape = true;
+    pages.splice(newIdx, 0, newPage);
     currentPage = newIdx;
     loadPage(newIdx);
+    // Re-fit canvas to the new page's aspect ratio. loadPage() already
+    // applied the per-page geometry; resize() updates cssW/cssH/frame.
+    resize();
     updatePageBar();
     render();
     fd.redrawAll();
@@ -8064,7 +8300,107 @@ document.getElementById('addPage').addEventListener('click', ()=>{
     frame.classList.add('page-new');
     frame.addEventListener('animationend', ()=> frame.classList.remove('page-new'), {once:true});
   }, 180);
-});
+}
+
+(()=>{
+  const btn = document.getElementById('addPage');
+  const menu = document.getElementById('addPageMenu');
+  const HOLD_DELAY = 500;
+  let holdTimer = null;
+  let suppressClick = false;
+  let pressPos = null;
+  // Px movement that cancels long-press. Generous enough to tolerate finger
+  // tremor on touch but tight enough that a real drag/swipe doesn't open
+  // the menu.
+  const MOVE_DEAD = 12;
+
+  function isOpen(){ return menu.style.display !== 'none' && menu.style.display !== ''; }
+  function hide(){ menu.style.display = 'none'; }
+  function show(){
+    // Menu lives inside .frame (position:relative). Position absolutely
+    // relative to that parent. Place above the + button, right-aligned to
+    // its right edge. The + button sits at bottom:20px right:14px (scaled
+    // by zoom), and the menu height is small enough that it won't clip
+    // against .frame's overflow:hidden as long as we anchor with `bottom`.
+    menu.style.display = 'flex';
+    // Read the live + position so the menu tracks zoom-scaled placement.
+    const btnStyle = getComputedStyle(btn);
+    const btnBottom = parseFloat(btnStyle.bottom) || 20;
+    const btnRight = parseFloat(btnStyle.right) || 14;
+    const btnHeight = btn.offsetHeight || 28;
+    menu.style.right = btnRight + 'px';
+    menu.style.bottom = (btnBottom + btnHeight + 6) + 'px';
+    menu.style.left = '';
+    menu.style.top = '';
+  }
+  function cancelHold(){
+    if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+  }
+
+  // Mouse path
+  btn.addEventListener('mousedown', e => {
+    if(_isIPhone) return; // iPhone is portrait-only; skip long-press
+    suppressClick = false;
+    pressPos = { x: e.clientX, y: e.clientY };
+    cancelHold();
+    holdTimer = setTimeout(()=>{
+      suppressClick = true;
+      show();
+    }, HOLD_DELAY);
+  });
+  btn.addEventListener('mousemove', e => {
+    if(!holdTimer || !pressPos) return;
+    if(Math.hypot(e.clientX - pressPos.x, e.clientY - pressPos.y) > MOVE_DEAD) cancelHold();
+  });
+  btn.addEventListener('mouseup', cancelHold);
+  btn.addEventListener('mouseleave', cancelHold);
+
+  // Touch path (iPad)
+  btn.addEventListener('touchstart', e => {
+    if(_isIPhone) return;
+    if(!e.touches[0]) return;
+    suppressClick = false;
+    pressPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    cancelHold();
+    holdTimer = setTimeout(()=>{
+      suppressClick = true;
+      show();
+    }, HOLD_DELAY);
+  }, {passive:true});
+  btn.addEventListener('touchmove', e => {
+    if(!holdTimer || !pressPos || !e.touches[0]) return;
+    if(Math.hypot(e.touches[0].clientX - pressPos.x, e.touches[0].clientY - pressPos.y) > MOVE_DEAD) cancelHold();
+  }, {passive:true});
+  btn.addEventListener('touchend', cancelHold, {passive:true});
+  btn.addEventListener('touchcancel', cancelHold, {passive:true});
+
+  // Click = portrait page (default), unless long-press just opened the menu
+  btn.addEventListener('click', e => {
+    if(suppressClick){ suppressClick = false; return; }
+    hide();
+    createNewPage(false);
+  });
+
+  // Menu option taps
+  menu.querySelectorAll('.ap-opt').forEach(opt => {
+    const choose = e => {
+      e.preventDefault(); e.stopPropagation();
+      const landscape = opt.dataset.orient === 'landscape';
+      hide();
+      createNewPage(landscape);
+    };
+    opt.addEventListener('mousedown', choose);
+    opt.addEventListener('touchstart', choose, {passive:false});
+  });
+
+  // Outside-tap closes
+  document.addEventListener('mousedown', e => {
+    if(isOpen() && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) hide();
+  });
+  document.addEventListener('touchstart', e => {
+    if(isOpen() && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) hide();
+  }, {passive:true});
+})();
 updatePageBar();
 
 // ── Bookmark feature ────────────────────────────────────────────────────
