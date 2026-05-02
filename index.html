@@ -8291,6 +8291,25 @@ if(_isIPhone){
     });
   }
 }
+// iPad: hook into the orientation media query so the horizontal/vertical
+// toolbar swap happens automatically on device rotation. ResizeObserver
+// alone is unreliable here — it can fire mid-rotation with stale viewport
+// dimensions, causing toggleVerticalToolbar() to read the old orientation.
+// A matchMedia listener fires exactly when the orientation flips.
+if(_isTouch && !_isIPhone){
+  const _orientQ = window.matchMedia('(orientation:landscape)');
+  const _onOrient = ()=>{
+    // First call applies the layout change immediately; second call cleans up
+    // anything Safari hadn't settled by the first frame (canvas DPR, scroll
+    // positions, viewport-relative widths).
+    requestAnimationFrame(()=>{ resize(); render(); fd.redrawAll(); });
+    setTimeout(()=>{ resize(); render(); fd.redrawAll(); }, 300);
+  };
+  // matchMedia.addEventListener is the modern API; fall back to the
+  // deprecated addListener for older WebKit if needed.
+  if(_orientQ.addEventListener) _orientQ.addEventListener('change', _onOrient);
+  else if(_orientQ.addListener) _orientQ.addListener(_onOrient);
+}
 resize();
 updateAccidentalState();
 updatePenControls();
