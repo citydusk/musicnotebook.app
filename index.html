@@ -274,6 +274,9 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   #penSelect{height:21px !important;}
   #penColors{height:44px !important;}
   #penColors span{width:14px !important;height:14px !important;}
+  /* Allow native vertical scroll on canvases — JS handlers consume the touch
+     when drawing/note placement is appropriate; otherwise the browser scrolls. */
+  #c, #fc{touch-action:pan-y;}
   @media (hover:none){.btn:not(.on):not(.muted):hover{background:transparent;color:var(--btn-color)}}
   /* iOS-style dialog on touch devices */
   #confirmDlg{background:rgba(0,0,0,0.4);}
@@ -820,6 +823,18 @@ const MAX_LEDGER_SLOT_BELOW = 16;
 const MAX_LEDGER_TAP_ABOVE = _isIPhone ? -6 : -8;
 const MAX_LEDGER_TAP_BELOW = _isIPhone ? 14 : 16;
 const _isTouch = window.matchMedia('(pointer:coarse)').matches;
+// iPad finger-scroll rule: on iPad, a one-finger touch should fall through to native
+// page scroll (rather than draw / place a note) when either a Pencil has been detected
+// at any point in this session, or no tool is selected. This lets composers scroll
+// long pages with one finger in landscape. Two-finger gestures and Pencil input are
+// unaffected. iPhone keeps its existing behavior (page is locked to viewport anyway).
+function _shouldFingerScroll(e){
+  if(!_isTouch || _isIPhone) return false;
+  if(e.touches && e.touches.length !== 1) return false;
+  const t = e.touches && e.touches[0];
+  if(!t || t.touchType === 'stylus') return false;
+  return _pencilDetected || mode === 'none';
+}
 const PAPER = '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
 const SECOND_OFFSET = NW * 1.90;
 const STEM_LW = LINE_W * 1.6;
@@ -5476,6 +5491,7 @@ cv.addEventListener('mouseleave',()=>{
 });
 cv.addEventListener('touchstart',e=>{
   if(isDrawMode()) return;
+  if(_shouldFingerScroll(e)) return; // let native scroll handle it
   const t0 = e.touches[0];
   if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
   const fingerAllowedModes = ['select','lasso','scrub','erase','none'];
@@ -5502,6 +5518,7 @@ cv.addEventListener('touchstart',e=>{
 },{passive:false});
 cv.addEventListener('touchmove', e=>{
   if(isDrawMode())return;
+  if(_shouldFingerScroll(e)) return; // let native scroll handle it
   e.preventDefault();
   const t0=e.touches[0];
   const hadRadialTimer = !!_radialTimer;
@@ -6205,6 +6222,7 @@ const fd = (() => {
   }, { passive: true });
   // Touch events: handle BOTH drawing and notation passthrough
   canvas.addEventListener('touchstart', e => {
+    if(_shouldFingerScroll(e)) return; // let native scroll handle it
     e.preventDefault();
     if(e.target !== canvas) return; // not our touch — let it reach cv
     e.stopPropagation(); // prevent cv from also handling this touch
@@ -6273,6 +6291,7 @@ const fd = (() => {
     }
   }, { passive: false });
   canvas.addEventListener('touchmove', e => {
+    if(_shouldFingerScroll(e)) return; // let native scroll handle it
     e.preventDefault();
     e.stopPropagation();
     if (isDrawMode()) {
