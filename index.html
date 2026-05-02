@@ -155,15 +155,7 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
 #keySigMenu.show{display:flex;}
 #keySigMenu .btn{width:100%;justify-content:flex-start;font-size:11px;padding:3px 8px;white-space:nowrap;}
 #textLabelEditor{
-  /* Default-hidden via visibility (not display:none) so the element remains in
-     layout and is always focusable. Required for the iPad full keyboard: when
-     the user double-taps or finishes drawing a text box, primeIOSKeyboard()
-     focuses a hidden bait input synchronously, then openTextEditor focuses the
-     real textarea. If this textarea is display:none at gesture time, iOS treats
-     the subsequent display:block→focus as a non-gesture-continuous interaction
-     and shows the small/floating keyboard or no keyboard at all. */
-  visibility:hidden;pointer-events:none;opacity:0;
-  position:absolute;z-index:50;
+  display:none;position:absolute;z-index:50;
   background:rgba(255,255,255,0.92);
   border:1.5px solid rgba(85,128,204,0.8);
   border-radius:3px;
@@ -179,9 +171,6 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
   white-space:pre-wrap;
   -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
 }
-/* When .editing class is added by openTextEditor, the textarea becomes visible
-   and interactive. The class is removed by commit/cancel. */
-#textLabelEditor.editing{visibility:visible;pointer-events:auto;opacity:1;}
 body.light #textLabelEditor{background:rgba(220,220,220,0.97);color:#1C1508;}
 body:not(.light) #textLabelEditor{background:rgba(210,210,210,0.97);color:#1C1508;}
 #textToolbar{
@@ -285,7 +274,6 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   #penSelect{height:21px !important;}
   #penColors{height:44px !important;}
   #penColors span{width:14px !important;height:14px !important;}
-  #c{background:#E0D0AD !important;}
   @media (hover:none){.btn:not(.on):not(.muted):hover{background:transparent;color:var(--btn-color)}}
   /* iOS-style dialog on touch devices */
   #confirmDlg{background:rgba(0,0,0,0.4);}
@@ -627,20 +615,6 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   <div class="grp">
     <button class="btn" id="utilBtn" style="padding:2px 4px;position:relative;" title="more"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
     <input type="file" id="loadFileInput" accept=".mnb,.cnb,.json" style="display:none;"/>
-    <!-- iOS keyboard primer: focused synchronously inside touch handlers so that
-         the subsequent focus on the real input/textarea is treated by Safari as
-         gesture-continuous, which triggers the full software keyboard on iPad
-         instead of the reduced/floating variant. Must NOT be display:none
-         (cannot be focused) and must NOT be readonly (skips keyboard on iOS).
-         Positioned off-screen so it's invisible but focusable.
-         Element type is <textarea> not <input>: iOS appears to treat focus
-         transfer between matching element types as more reliably
-         gesture-continuous. The text-label editor (the harder-to-prime case)
-         is a textarea; the bookmark popover input still works fine being
-         primed from a textarea. -->
-    <textarea id="iosKbdPrimer" aria-hidden="true" tabindex="-1"
-           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-           style="position:absolute;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0;font-size:16px;resize:none;"></textarea>
   </div>
 </div>
 
@@ -725,12 +699,6 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 // ═══════════════════════════════════════════════════════════════
 //  MUSIC MANUSCRIPT SKETCHPAD
 // ═══════════════════════════════════════════════════════════════
-
-// Version. Date-based: YYYY.MM.DD with optional a/b/c suffix for multiple
-// builds in the same day. Bump this whenever you ship a new index.html.
-const VERSION = '2026.04.27d';
-console.log('Music Notebook ' + VERSION);
-
 //
 //  ARCHITECTURE OVERVIEW
 //  ─────────────────────
@@ -852,7 +820,7 @@ const MAX_LEDGER_SLOT_BELOW = 16;
 const MAX_LEDGER_TAP_ABOVE = _isIPhone ? -6 : -8;
 const MAX_LEDGER_TAP_BELOW = _isIPhone ? 14 : 16;
 const _isTouch = window.matchMedia('(pointer:coarse)').matches;
-const PAPER = (_isTouch && !_isIPhone) ? '#E0D0AD' : '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
+const PAPER = '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
 const SECOND_OFFSET = NW * 1.90;
 const STEM_LW = LINE_W * 1.6;
 const SNAP_R = NW * 4;
@@ -3767,30 +3735,6 @@ function effectiveAccidentalForGhost(g){
   return keySigAccForSlot(g.si, g.x, g.slot);
 }
 let _isMouseMove = false; // true during mouse-originated moves (not touch)
-
-// ── iPad single-finger scroll (landscape only) ─────────────────────────
-// Most recent touch type — set by cv touchstart. Used by notationMove and the
-// finger-scroll handlers to distinguish stylus from finger without re-reading
-// the original event.
-let _lastTouchType = null;
-
-// Tap-vs-drag threshold. Same value drives the dead zone in notationMove (so
-// brief finger taps don't accidentally start a drag) AND the finger-scroll
-// commit threshold (so a brief touch can still register as a tap before the
-// scroll handler claims the gesture). Mouse and stylus are exempt — only
-// finger touches are jittery enough to need this.
-const TAP_DRAG_THRESHOLD_CSS = 6;
-function tapDragThresholdLogical(){
-  // fd.cssW is the current css width of the page; LW is its logical width.
-  // Convert CSS px to logical px on the fly so the threshold scales with zoom.
-  return TAP_DRAG_THRESHOLD_CSS * (LW / (fd.cssW || LW));
-}
-
-// Single-finger scroll state. Primed on touchstart in scroll-eligible context;
-// becomes active when movement crosses the threshold. While active, all
-// notation drag/commit work is short-circuited.
-let _fingerScrollState = { active:false, primed:false, startX:0, startY:0, lastY:0 };
-
 let _pencilDetected = false; // once Pencil is used, reject finger draws
 // Restore pencil detection from localStorage so palm rejection works immediately
 if(localStorage.getItem('pencilDetected')) _pencilDetected = true;
@@ -4401,11 +4345,8 @@ function notationDown(x,y){
   const sl=Math.max(slAbove,Math.min(slBelow,ySlot(y,si)));
   let snappedX=snapX(x);
 
-  // Apple Pencil, iPhone, or iPad finger-in-landscape: show ghost only,
-  // defer placement to lift. The iPad case is required so a tap-and-drag-to-scroll
-  // gesture doesn't leave a stray note behind — notationUp's scroll-active gate
-  // discards the ghost if the finger ended up scrolling instead of placing.
-  if((_isPenInput || _isIPhone || (_isTouch && shouldFingerScroll())) && isNoteMode()){
+  // Apple Pencil or iPhone touch: show ghost only, defer placement to lift
+  if((_isPenInput || _isIPhone) && isNoteMode()){
     ghost={x:snappedX,slot:sl,si,head:headFromMode(),acc:accFromMode(),dot:dotFromMode()};
     _penNoteDeferred = true;
     _lastAuditionSlot = sl;
@@ -4439,30 +4380,6 @@ function notationDown(x,y){
 function notationMove(x,y){
   if(mode==='none') return;
   if(mode==='text'){ textModeMove(x, y); return; }
-  // ── iPad finger-scroll integration ────────────────────────────────────
-  // If the finger-scroll handler has claimed the gesture, suppress all drag
-  // commits. selDragging/lassoGroupDrag were already cleared in the scroll
-  // handler when it activated.
-  if(_fingerScrollState.active) return;
-  // Dead zone: in scroll-eligible context, finger drags below the threshold
-  // don't commit yet (the scroll handler may claim them). In non-scroll
-  // contexts, finger drags still need a small dead zone to absorb tap jitter.
-  if(_isTouch && !_isMouseMove && _lastTouchType !== 'stylus'){
-    if(shouldFingerScroll()){
-      // Scroll-eligible: defer drag commit until the scroll handler decides.
-      // (selDragging may still be true from notationDown — leave it set so a
-      // drag below the scroll threshold continues to work in case the user
-      // never crosses it; the scroll handler will clear it on activation.)
-      const thr = tapDragThresholdLogical();
-      if(selDragging && selDragStart && Math.hypot(x-selDragStart.x, y-selDragStart.y) < thr) return;
-      if(lassoGroupDrag && lassoGroupStart && Math.hypot(x-lassoGroupStart.x, y-lassoGroupStart.y) < thr) return;
-    } else {
-      // Non-scroll context: still apply the dead zone for tap stability.
-      const thr = tapDragThresholdLogical();
-      if(selDragging && selDragStart && Math.hypot(x-selDragStart.x, y-selDragStart.y) < thr) return;
-      if(lassoGroupDrag && lassoGroupStart && Math.hypot(x-lassoGroupStart.x, y-lassoGroupStart.y) < thr) return;
-    }
-  }
   // ── Group drag (shared by lasso and select modes) ─────────────────────
   if(lassoGroupDrag&&lassoGroupOrig&&lassoGroupStart){
     const dx=x-lassoGroupStart.x, dy=y-lassoGroupStart.y;
@@ -4960,16 +4877,6 @@ function notationMove(x,y){
 }
 function notationUp(x,y){
   eraseHeld=false;
-  // ── iPad finger-scroll: if scroll claimed the gesture, suppress all
-  // drag-commit work (drag state was already cleared on activation).
-  // Reset the flag here so the next gesture starts fresh.
-  if(_fingerScrollState.active){
-    _fingerScrollState.active = false;
-    _fingerScrollState.primed = false;
-    ghost = null; alignGuide = null;
-    render();
-    return;
-  }
   // Apple Pencil: place deferred note on lift
   if(_penNoteDeferred && ghost && isNoteMode()){
     _penNoteDeferred = false;
@@ -5570,9 +5477,6 @@ cv.addEventListener('mouseleave',()=>{
 cv.addEventListener('touchstart',e=>{
   if(isDrawMode()) return;
   const t0 = e.touches[0];
-  // Track touch type so notationMove and the finger-scroll handlers can
-  // distinguish stylus from finger without re-reading the event.
-  if(t0) _lastTouchType = (t0.touchType === 'stylus') ? 'stylus' : 'finger';
   if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
   const fingerAllowedModes = ['select','lasso','scrub','erase','none'];
   if(_pencilDetected && t0 && t0.touchType !== 'stylus' && !fingerAllowedModes.includes(mode)) return;
@@ -5639,9 +5543,6 @@ cv.addEventListener('touchend',  e=>{
       const h = tl._h || fsToLogical(tl.fontSize || DEFAULT_FONT_SIZE_PT) * 1.9;
       if(x >= tl.x && x <= tl.x + tl.w && y >= tl.y && y <= tl.y + h){
         sel = {type:'textLabel', id:tl.id}; selSet = [];
-        // Prime the iPad keyboard early in the gesture, before openTextEditor's
-        // layout and render() calls. Safe no-op on desktop.
-        primeIOSKeyboard();
         historyPush(); openTextEditor(tl);
         ghost=null;alignGuide=null;render();
         return;
@@ -7081,17 +6982,6 @@ document.getElementById('printBtn').addEventListener('click',()=>{
 // a chord (simultaneous). Rests produce gaps. Ties combine into single events.
 // Tempo is fixed at 120 BPM (quarter = 500ms). User sets real tempo in their DAW.
 
-// iPad/iOS keyboard prime. Focuses the hidden #iosKbdPrimer synchronously so a
-// subsequent focus on the real input (which may happen async, after layout, or
-// from a non-primary event like dblclick) is treated by Safari as
-// gesture-continuous, triggering the full software keyboard. No-op on
-// non-touch devices so desktop focus behavior is unchanged.
-function primeIOSKeyboard(){
-  if(!_isTouch) return;
-  const p = document.getElementById('iosKbdPrimer');
-  if(p) p.focus({preventScroll: true});
-}
-
 // Show a simple info dialog (single OK button) styled like the stem/beam hint.
 // Used by export tools to surface guidance without the destructive-action framing
 // of the existing #confirmDlg.
@@ -8226,11 +8116,7 @@ function openBookmarkPopover(){
   popover.style.right = (btn.offsetParent ? (btn.offsetParent.offsetWidth - (btn.offsetLeft + btn.offsetWidth)) : 14) + 'px';
   popover.style.left = 'auto';
   popover.classList.add('show');
-  // Sync focus is required for the iPad full keyboard. The earlier setTimeout(…,0)
-  // pattern ran outside the user-gesture call stack and got the reduced keyboard.
-  // primeIOSKeyboard() is called by the bookmark button touch/click handler before
-  // openBookmarkPopover() runs, which makes this focus gesture-continuous on iOS.
-  titleInput.focus({preventScroll: true});
+  setTimeout(()=> titleInput.focus(), 0);
   // Reflect the auto-populated date in the page label immediately
   syncBookmarkIcon();
 }
@@ -8260,9 +8146,6 @@ function commitBookmarkEdits(){
 if(!_isIPhone){
   document.getElementById('bookmarkBtn').addEventListener('click', (e) => {
     e.stopPropagation();
-    // Prime the iPad keyboard early in the gesture, before any layout work in
-    // openBookmarkPopover. Safe no-op on desktop.
-    primeIOSKeyboard();
     const pg = pages[currentPage];
     const popover = document.getElementById('bookmarkPopover');
     if(popover.classList.contains('show')){
@@ -8461,80 +8344,6 @@ function onPanEnd(e){
   el.addEventListener('touchmove',  onPanMove,  {passive:false});
   el.addEventListener('touchend',   onPanEnd,   {passive:true});
   el.addEventListener('touchcancel',onPanEnd,   {passive:true});
-});
-
-// ── Single-finger scroll (iPad landscape only) ────────────────────────
-// In landscape the page is taller than the viewport, so vertical scroll is
-// meaningful. Scroll engages when:
-//   - Device is touch and not iPhone (i.e. iPad)
-//   - Orientation is landscape
-//   - Mode is "select-like" — not actively drawing/placing notation
-//   - Last touch was a finger (not stylus — Pencil always draws/selects)
-// Tap-vs-pan is resolved by the same threshold the drag dead zone uses, so
-// brief taps still register as taps (selection, etc.) before the scroll handler
-// claims the gesture.
-function shouldFingerScroll(){
-  if(!_isTouch || _isIPhone) return false;
-  if(!window.matchMedia('(orientation:landscape)').matches) return false;
-  if(_lastTouchType === 'stylus') return false;
-  // Mode-agnostic: a finger drag past the threshold scrolls regardless of mode.
-  // Brief taps still register as taps (note placement, selection, etc.) because
-  // the threshold gate fires before the scroll handler claims the gesture.
-  // Pencil sessions are unaffected — Pencil always draws/selects (gated above).
-  return true;
-}
-
-function onFingerScrollStart(e){
-  if(e.touches.length !== 1) return;
-  if(!shouldFingerScroll()){ _fingerScrollState.primed = false; return; }
-  const t = e.touches[0];
-  _fingerScrollState.primed = true;
-  _fingerScrollState.active = false;
-  _fingerScrollState.startX = t.clientX;
-  _fingerScrollState.startY = t.clientY;
-  _fingerScrollState.lastY  = t.clientY;
-}
-
-function onFingerScrollMove(e){
-  if(!_fingerScrollState.primed) return;
-  if(e.touches.length !== 1){
-    // Switched to multi-finger (likely 2-finger pan) — let onPanMove take over.
-    _fingerScrollState.primed = false;
-    _fingerScrollState.active = false;
-    return;
-  }
-  const t = e.touches[0];
-  if(!_fingerScrollState.active){
-    // Wait for movement to cross the threshold before claiming the gesture.
-    const dx = t.clientX - _fingerScrollState.startX;
-    const dy = t.clientY - _fingerScrollState.startY;
-    if(Math.hypot(dx, dy) < TAP_DRAG_THRESHOLD_CSS) return;
-    _fingerScrollState.active = true;
-    // Cancel any drag-in-progress that the notationDown started — we're scrolling now.
-    selDragging = false; selDragOrig = null; selDragStart = null;
-    lassoGroupDrag = false; lassoGroupStart = null; lassoGroupOrig = null;
-    ghost = null; alignGuide = null;
-    _penNoteDeferred = false;
-  }
-  // Active scroll — translate finger movement to scrollTop delta.
-  e.preventDefault();
-  scrollArea.scrollTop -= (t.clientY - _fingerScrollState.lastY);
-  _fingerScrollState.lastY = t.clientY;
-}
-
-function onFingerScrollEnd(e){
-  if(e.touches.length === 0){
-    _fingerScrollState.primed = false;
-    // Note: leave .active set until notationUp runs — it checks the flag to
-    // know whether to suppress its own drag-commit work. notationUp resets it.
-  }
-}
-
-[cv, fd.canvas].forEach(el => {
-  el.addEventListener('touchstart', onFingerScrollStart, {passive:true});
-  el.addEventListener('touchmove',  onFingerScrollMove,  {passive:false});
-  el.addEventListener('touchend',   onFingerScrollEnd,   {passive:true});
-  el.addEventListener('touchcancel',onFingerScrollEnd,   {passive:true});
 });
 
 // ── Edge swipe page turn (touch only) ─────────────────────────────────
@@ -9363,7 +9172,7 @@ function openTextEditor(tl){
   textEditor.style.lineHeight = '1.35';
   textEditor.style.padding    = pad + 'px ' + pad + 'px';
   textEditor.value            = tl.text || '';
-  textEditor.classList.add('editing');
+  textEditor.style.display    = 'block';
 
   syncToolbarToLabel(tl);
   textToolbar.classList.add('show');
@@ -9388,10 +9197,10 @@ function fitEditorHeight(){
 }
 
 function commitTextEditor(){
-  if(!textEditor.classList.contains('editing')) return;
+  if(textEditor.style.display === 'none') return;
   const id  = editingLabelId;
   const txt = textEditor.value;
-  textEditor.classList.remove('editing');
+  textEditor.style.display = 'none';
   textToolbar.classList.remove('show');
   editingLabelId = null;
 
@@ -9425,9 +9234,9 @@ function commitTextEditor(){
 }
 
 function cancelTextEditor(){
-  if(!textEditor.classList.contains('editing')) return;
+  if(textEditor.style.display === 'none') return;
   const id = editingLabelId;
-  textEditor.classList.remove('editing');
+  textEditor.style.display = 'none';
   textToolbar.classList.remove('show');
   editingLabelId = null;
   const tl = textLabels.find(t => t.id === id);
@@ -9560,9 +9369,6 @@ function textModeUp(x, y){
   };
   historyPush();
   textLabels.push(newLabel);
-  // Prime the iPad keyboard early in the gesture, before openTextEditor's layout
-  // and render() calls. Safe no-op on desktop.
-  primeIOSKeyboard();
   openTextEditor(newLabel);
   render();
 }
@@ -9577,9 +9383,6 @@ cv.addEventListener('dblclick', e => {
       sel    = {type: 'textLabel', id: tl.id};
       selSet = [];
       historyPush();
-      // Prime the iPad keyboard early in the gesture, before openTextEditor's
-      // layout and render() calls. Safe no-op on desktop.
-      primeIOSKeyboard();
       openTextEditor(tl);
       return;
     }
