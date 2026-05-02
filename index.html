@@ -304,7 +304,8 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   #penSelect{height:21px !important;}
   #penColors{height:44px !important;}
   #penColors span{width:14px !important;height:14px !important;}
-  #c{background:#E0D0AD !important;}
+  /* Paper color now matches desktop (#F8F3E7) on all platforms — the iPad-specific
+     darker cream override has been removed. */
   @media (hover:none){.btn:not(.on):not(.muted):hover{background:transparent;color:var(--btn-color)}}
   /* iOS-style dialog on touch devices */
   #confirmDlg{background:rgba(0,0,0,0.4);}
@@ -847,7 +848,7 @@ const MAX_LEDGER_TAP_BELOW = _isIPhone ? 14 : 16;
 const MAX_COLS   = 4;
 const LINE_W = _isIPhone ? 1.4 : 0.6;
 const _isTouch = window.matchMedia('(pointer:coarse)').matches;
-const PAPER = (_isTouch && !_isIPhone) ? '#E0D0AD' : '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
+const PAPER = '#F8F3E7', INK = '#1C1508', LINE = '#2A1E0E';
 
 // iPhone-only intermediates (used during initial portrait setup below)
 const _iPhoneLS = _isIPhone ? (20.9 * MM) / 4 : 0;
@@ -1655,17 +1656,19 @@ function resize(){
     baseW = frame.clientWidth || Math.min(availW, window.innerWidth);
   } else if(_isLandscapeTablet && !_curPageLandscape){
     // iPad landscape with a PORTRAIT page: keep page at portrait width,
-    // let height overflow for scrolling. Landscape pages skip this cap so
-    // they can use the full horizontal room (the side toolbar, when active,
-    // already takes its share of the width via flex layout).
+    // let height overflow for scrolling.
     baseW = Math.min(availW, 590);
+  } else if(_isLandscapeTablet && _curPageLandscape){
+    // iPad landscape with a LANDSCAPE page: fill the available vertical
+    // space rather than matching portrait's smaller scale. iPad landscape
+    // is the natural use case for landscape pages — there's room, and
+    // shrinking the page to portrait-equivalent size wastes it.
+    baseW = Math.min(availW, availH * LW / LH);
   } else {
-    // Desktop/iPad portrait, OR landscape page in any orientation.
-    // Use the page's LONG side as the reference so portrait and landscape
-    // pages render at the same physical scale on screen — they're the
-    // same piece of paper, just oriented differently. longSide is 900 for
-    // both (portrait LH=900, landscape LW=900). The scale factor is set
-    // by whichever viewport axis is tighter relative to that long side.
+    // Desktop, iPad portrait: use the page's LONG side as the reference
+    // so portrait and landscape pages render at the same physical scale.
+    // They're the same piece of paper just oriented differently. longSide
+    // is 900 for both (portrait LH=900, landscape LW=900).
     const longSide = Math.max(LW, LH);
     const scale = Math.min(availW / longSide, availH / longSide);
     baseW = LW * scale;
@@ -3955,6 +3958,39 @@ let _pencilDetected = false; // once Pencil is used, reject finger draws
 // Restore pencil detection from localStorage so palm rejection works immediately
 if(localStorage.getItem('pencilDetected')) _pencilDetected = true;
 
+// ── 1-finger pan (iPad) ──────────────────────────────────────────────
+// On iPad, finger touches should pan the .scroll-area instead of doing
+// tool actions, in two cases:
+//   (a) Pencil has been used at any point (_pencilDetected): finger ALWAYS
+//       pans, regardless of tool — finger is for navigation, pencil is for
+//       drawing.
+//   (b) No pencil has been used yet AND no tool is selected (mode==='none'):
+//       finger pans (since there's nothing for it to do otherwise).
+// In all other cases, finger does the tool action as before.
+// The canvases have touch-action:none so we have to drive scroll manually.
+let _fingerPanActive = false, _fingerPanLastX = 0, _fingerPanLastY = 0;
+function _shouldFingerPan(t0){
+  if(_isIPhone || !_isTouch) return false;
+  if(!t0 || t0.touchType === 'stylus') return false;
+  if(_pencilDetected) return true;
+  return mode === 'none';
+}
+function _fingerPanStart(t0){
+  _fingerPanActive = true;
+  _fingerPanLastX = t0.clientX;
+  _fingerPanLastY = t0.clientY;
+}
+function _fingerPanStep(t0){
+  if(!_fingerPanActive) return;
+  const sa = document.querySelector('.scroll-area');
+  if(!sa) return;
+  sa.scrollLeft -= (t0.clientX - _fingerPanLastX);
+  sa.scrollTop  -= (t0.clientY - _fingerPanLastY);
+  _fingerPanLastX = t0.clientX;
+  _fingerPanLastY = t0.clientY;
+}
+function _fingerPanEnd(){ _fingerPanActive = false; }
+
 function notationDown(x,y){
   if(editingLabelId !== null) commitTextEditor();
   if(mode==='none') return;
@@ -5694,6 +5730,14 @@ cv.addEventListener('touchstart',e=>{
   if(isDrawMode()) return;
   const t0 = e.touches[0];
   if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
+  // Finger-pan check: if conditions are met (see _shouldFingerPan), start
+  // panning instead of tool action. Single-finger only — 2-finger pan/pinch
+  // is handled by separate onPanStart/Move handlers.
+  if(e.touches.length === 1 && _shouldFingerPan(t0)){
+    e.preventDefault();
+    _fingerPanStart(t0);
+    return;
+  }
   const fingerAllowedModes = ['select','lasso','scrub','erase','none'];
   if(_pencilDetected && t0 && t0.touchType !== 'stylus' && !fingerAllowedModes.includes(mode)) return;
   e.preventDefault();
@@ -5718,6 +5762,12 @@ cv.addEventListener('touchstart',e=>{
 },{passive:false});
 cv.addEventListener('touchmove', e=>{
   if(isDrawMode())return;
+  // Active finger pan — drive scroll directly, don't run tool dispatch.
+  if(_fingerPanActive && e.touches.length === 1){
+    e.preventDefault();
+    _fingerPanStep(e.touches[0]);
+    return;
+  }
   e.preventDefault();
   const t0=e.touches[0];
   const hadRadialTimer = !!_radialTimer;
@@ -5736,6 +5786,9 @@ cv.addEventListener('touchmove', e=>{
 },{passive:false});
 cv.addEventListener('touchend',  e=>{
   if(isDrawMode())return;
+  // End any active finger pan and skip tool dispatch (the tool wasn't
+  // running during the pan, so there's nothing for it to do on touchend).
+  if(_fingerPanActive){ _fingerPanEnd(); e.preventDefault(); return; }
   e.preventDefault();
   const src=e.changedTouches[0];
   if(_radialOpen && src){ _radialCommit(src.clientX, src.clientY); ghost=null;alignGuide=null;render(); return; }
@@ -5768,7 +5821,7 @@ cv.addEventListener('touchend',  e=>{
   _lastTapTime = now; _lastTapPos = {x, y};
   notationUp(x,y);ghost=null;alignGuide=null;_clefJustPlaced=false;render();
 },{passive:false});
-cv.addEventListener('touchcancel',()=>{if(!isDrawMode()){ghost=null;alignGuide=null;eraseHeld=false;_penNoteDeferred=false;_clefJustPlaced=false;_hideNoteNamePopup();render();}},{passive:true});
+cv.addEventListener('touchcancel',()=>{_fingerPanEnd();if(!isDrawMode()){ghost=null;alignGuide=null;eraseHeld=false;_penNoteDeferred=false;_clefJustPlaced=false;_hideNoteNamePopup();render();}},{passive:true});
 // ═══════════════════════════════════════════════════════════════
 //  FREE-DRAW OVERLAY  (canvas #fc, sits on top)
 // ═══════════════════════════════════════════════════════════════
@@ -6433,6 +6486,13 @@ const fd = (() => {
     } else {
       const t0 = e.touches[0];
       if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
+      // Finger-pan check, same logic as cv touchstart — fd.canvas is the
+      // free-draw layer that overlays the notation; touches that fall on it
+      // when a draw tool isn't active should still pan in pan-eligible cases.
+      if(e.touches.length === 1 && _shouldFingerPan(t0)){
+        _fingerPanStart(t0);
+        return;
+      }
       const fingerAllowedModes = ['select','lasso','scrub','erase','none'];
       if(_pencilDetected && t0 && t0.touchType !== 'stylus' && !fingerAllowedModes.includes(mode)) return;
       if(_radialOpen && t0){ _radialCommit(t0.clientX, t0.clientY); return; }
@@ -6491,6 +6551,11 @@ const fd = (() => {
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     e.stopPropagation();
+    // Active finger pan from fd.canvas — drive scroll directly.
+    if(_fingerPanActive && e.touches.length === 1){
+      _fingerPanStep(e.touches[0]);
+      return;
+    }
     if (isDrawMode()) {
       if (_pencilDetected && e.touches[0] && e.touches[0].touchType !== 'stylus' && !isDrawing) return;
       drawMove(e);
@@ -6513,6 +6578,7 @@ const fd = (() => {
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     e.stopPropagation();
+    if(_fingerPanActive){ _fingerPanEnd(); return; }
     if (isDrawMode()) {
       drawEnd();
     } else {
@@ -6532,6 +6598,7 @@ const fd = (() => {
     }
   }, { passive: false });
   canvas.addEventListener('touchcancel', () => {
+    _fingerPanEnd();
     if (isDrawMode()) {
       drawEnd();
     } else {
