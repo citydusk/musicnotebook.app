@@ -330,7 +330,7 @@
     position: relative;
     background: #3a2f23;
     border: none;
-    border-radius: 4px;
+    border-radius: 7px;
     cursor: pointer;
     font-family: 'Inter', sans-serif;
     font-size: clamp(5.5px, calc(var(--key-w) * 0.1), 8px);
@@ -407,7 +407,7 @@
   }
 
   .key {
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     touch-action: none;
     position: relative;
@@ -691,14 +691,40 @@
       const lblSynth = document.createElement('span');
       lblSynth.className = 'lbl lbl-synth';
       lblSynth.textContent = 'SYNTH';
-      sw.addEventListener('click', () => {
+
+      // The toggle lives inside the keyboard grid (so it can occupy the
+      // empty corner via grid placement), but the keyboard's touchstart
+      // handler calls preventDefault, which on iOS swallows the synthetic
+      // click that would otherwise reach the toggle. So we attach explicit
+      // touch handlers here and stopPropagation to keep the keyboard's
+      // handler from running on these touches.
+      const flipSwitch = () => {
         const next = MANUALS[idx].instrument === 'piano' ? 'synth' : 'piano';
         setInstrument(idx, next);
-      });
-      // Tapping the labels themselves should also flip — feels broken
-      // otherwise on a small target.
-      lblPiano.addEventListener('click', () => setInstrument(idx, 'piano'));
-      lblSynth.addEventListener('click', () => setInstrument(idx, 'synth'));
+      };
+      const setTo = (name) => () => setInstrument(idx, name);
+
+      function bindTap(el, handler) {
+        // Click works on desktop; touchstart works on iOS. Use both with
+        // stopPropagation so the keyboard's preventDefault doesn't
+        // intercept, and a small flag to avoid double-firing on devices
+        // that synthesize click after touch.
+        let touched = false;
+        el.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+          touched = true;
+          handler();
+        }, { passive: true });
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (touched) { touched = false; return; }
+          handler();
+        });
+      }
+      bindTap(sw, flipSwitch);
+      bindTap(lblPiano, setTo('piano'));
+      bindTap(lblSynth, setTo('synth'));
+
       toggle.appendChild(lblPiano);
       toggle.appendChild(sw);
       toggle.appendChild(lblSynth);
@@ -997,6 +1023,20 @@
     }
 
     const key = manualIdx + ':' + note;
+
+    // If this note is currently sustained from a previous tap, release
+    // the sustained voice before attacking a new one. Without this,
+    // PolySynth allocates a second voice for the same pitch and the
+    // sustained voice never gets released — a stuck-note bug. (The
+    // piano sampler's behavior is similar enough to warrant the same
+    // cleanup.)
+    if (sustainedNotes.has(key)) {
+      const sus = sustainedNotes.get(key);
+      const susInst = instruments[sus.instName];
+      if (susInst) susInst.triggerRelease(manualIdx, note);
+      sustainedNotes.delete(key);
+    }
+
     if (!activeNotes.has(key)) activeNotes.set(key, new Set());
     activeNotes.get(key).add(touchId);
 
