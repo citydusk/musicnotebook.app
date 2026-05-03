@@ -121,17 +121,15 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
    column-flex with wrap enabled, a child with 100% along the flex axis
    forces a column break. So the same DOM split (notation tools above the
    pen cluster) becomes left column / right column in vertical mode. */
-/* Drop .outer's safe-area padding in vertical-tb mode. The padding is
-   asymmetric on iPad (different top/bottom env values) which makes
-   .scroll-area's height differ from .tb's fixed 100vh height — the
-   centered toolbar then appears shifted relative to the centered page.
-   In landscape orientation iPad has no visible notch/inset to dodge,
-   so the padding isn't doing anything useful here anyway.
-
-   Three-column layout: left-tb (pen/utility) | scroll-area (page) |
-   right-tb (notation). Tools frame the page on both sides. */
-body.vertical-tb .outer{flex-direction:row;align-items:stretch;padding:0 12px;}
-body.vertical-tb .tb, body.vertical-tb .tb-right{flex-direction:column;flex-wrap:wrap;width:auto;min-width:62px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:64px 4px 6px;gap:3px;align-items:flex-start;align-content:flex-start;justify-content:flex-start;overflow:hidden;box-sizing:border-box;}
+/* Three-column layout: left-tb (pen/utility) | scroll-area (page) |
+   right-tb (notation). Tools frame the page on both sides.
+   The safe-area top padding matters for standalone PWAs on iPad — when
+   the app is launched from the home screen, content extends edge-to-edge
+   and the status bar (time/battery) floats over the top. The inset tells
+   us how much vertical space to leave clear. The bottom inset accounts
+   for the home indicator in landscape orientation. */
+body.vertical-tb .outer{flex-direction:row;align-items:stretch;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);}
+body.vertical-tb .tb, body.vertical-tb .tb-right{flex-direction:column;flex-wrap:wrap;width:auto;min-width:62px;max-width:none;height:100%;max-height:100%;padding:64px 4px 6px;gap:3px;align-items:flex-start;align-content:flex-start;justify-content:flex-start;overflow:hidden;box-sizing:border-box;}
 body.vertical-tb .tb{border-right:0.5px solid rgba(0,0,0,0.1);border-left:none;}
 body.vertical-tb .tb-right{display:flex;border-left:0.5px solid rgba(0,0,0,0.1);}
 body.vertical-tb .grp{flex-direction:column;min-height:auto;}
