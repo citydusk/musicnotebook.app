@@ -31,7 +31,13 @@
     --avail-per-manual: calc((96vh - 28px - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
     --max-key-h: calc((var(--avail-per-manual) - 13px) / 2);
     --max-key-w-from-h: calc(var(--max-key-h) * 7 / 15);
-    --key-w: clamp(26px, min(5.3vw, var(--max-key-w-from-h)), 76px);
+    /* Horizontal budget: viewport minus device padding (8px each side
+       = 16px) minus the OCT-control column (≈ 0.5 × key-w) and its 8px
+       gap to the keyboard. Keyboard itself = 15 naturals × key-w
+       + 14 gaps × (0.07 × key-w) ≈ 15.98 × key-w. So the full row needs
+       ≈ 16.48 × key-w + 24px, and key-w ≤ (100vw − 24) / 16.48. */
+    --max-key-w-from-w: calc((100vw - 24px) / 16.48);
+    --key-w: clamp(26px, min(var(--max-key-w-from-w), var(--max-key-w-from-h)), 96px);
     --gap: max(3px, calc(var(--key-w) * 0.07));
     --subcol: calc((var(--key-w) - var(--gap)) / 2);
     --key-h: calc(var(--key-w) * 15 / 7);
@@ -75,9 +81,9 @@
   .device {
     position: relative;
     z-index: 1;
-    max-width: 98vw;
+    max-width: 100vw;
     max-height: 96vh;
-    padding: 14px;
+    padding: 14px 8px;
     display: flex;
     flex-direction: column;
     gap: var(--manual-gap);
@@ -642,20 +648,55 @@
 
   // === Audio ===
   function initSampler() {
+    // Low-latency hint must be set on the underlying AudioContext before
+    // Tone wires anything up. interactive ≈ 0.17s on iOS Safari; we want
+    // smaller. Combined with lookAhead=0 below, this drops perceived
+    // delay to roughly 1 audio buffer (~10–20ms on most iOS devices).
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)({
+        latencyHint: 'interactive',
+        sampleRate: 44100
+      });
+      Tone.setContext(ctx);
+    } catch (e) { /* fall back to Tone's default context */ }
+    Tone.context.lookAhead = 0;
+
     sampler = new Tone.Sampler({
       urls: SAMPLE_NOTES,
       baseUrl: SALAMANDER_BASE,
       release: 1.2,
-      onload: () => { samplesLoaded = true; },
+      onload: () => {
+        samplesLoaded = true;
+        warmUpSamples();
+      },
       onerror: (e) => { console.error(e); }
     }).toDestination();
   }
 
+  // Force iOS to decode + cache every sampled mp3 by triggering each at
+  // zero gain. Without this, the first hit on each pitch pays a small
+  // decode cost — audible as a tiny hitch on the first chord. We route
+  // through a muted gain so nothing is heard during warmup.
+  function warmUpSamples() {
+    if (!sampler) return;
+    const muted = new Tone.Gain(0).toDestination();
+    sampler.disconnect();
+    sampler.connect(muted);
+    const notes = Object.keys(SAMPLE_NOTES);
+    const now = Tone.now();
+    notes.forEach((n, i) => {
+      sampler.triggerAttackRelease(n, 0.05, now + i * 0.001, 0.01);
+    });
+    // Reconnect to the main output once warmup samples have all fired.
+    setTimeout(() => {
+      sampler.disconnect();
+      sampler.toDestination();
+      muted.dispose();
+    }, 200);
+  }
+
   // === Note triggers ===
   function noteOn(note, touchId) {
-    if (!audioStarted) {
-      Tone.start().then(() => { audioStarted = true; });
-    }
     if (!sampler || !samplesLoaded) return;
 
     if (!activeNotes.has(note)) activeNotes.set(note, new Set());
@@ -866,6 +907,22 @@
     if (now - lastTouchEnd <= 300) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
+
+  // Start the AudioContext on the very first user interaction — anywhere
+  // on the page, not just on a key — so the first note doesn't pay the
+  // startup cost. iOS requires a user gesture to unlock audio; touchstart
+  // and mousedown both qualify.
+  function unlockAudio() {
+    if (audioStarted) return;
+    audioStarted = true;
+    Tone.start();
+    document.removeEventListener('touchstart', unlockAudio, true);
+    document.removeEventListener('mousedown', unlockAudio, true);
+    document.removeEventListener('keydown', unlockAudio, true);
+  }
+  document.addEventListener('touchstart', unlockAudio, true);
+  document.addEventListener('mousedown', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
 
   // Init
   buildAllManuals();
