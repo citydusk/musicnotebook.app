@@ -122,8 +122,11 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
    forces a column break. So the same DOM split (notation tools above the
    pen cluster) becomes left column / right column in vertical mode. */
 body.vertical-tb .outer{flex-direction:row-reverse;align-items:stretch;padding-right:12px;}
-body.vertical-tb .tb{flex-direction:column;flex-wrap:wrap;width:auto;min-width:104px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:6px 4px;gap:3px;align-items:flex-start;align-content:flex-start;justify-content:flex-start;overflow:hidden;border-left:0.5px solid rgba(0,0,0,0.1);box-sizing:border-box;}
+body.vertical-tb .tb{flex-direction:column;flex-wrap:wrap;width:auto;min-width:124px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:6px 4px;gap:3px;align-items:flex-start;align-content:center;justify-content:center;overflow:hidden;border-left:0.5px solid rgba(0,0,0,0.1);box-sizing:border-box;}
 body.vertical-tb .grp{flex-direction:column;min-height:auto;}
+/* Column-item width normalization (see below). The grid toggle's parent
+   .grp now gets the same 52px width as everything else, with the toggle
+   centered inside. No grid-toggle-specific width override needed. */
 /* Right-align the paper inside scroll-area so the page sits adjacent to
    the toolbar instead of floating in the centre with empty space between
    it and the toolbar. .scroll-area is already a flex column; overriding
@@ -136,14 +139,21 @@ body.vertical-tb .scroll-area{flex:1;width:auto;min-width:0;align-items:flex-end
    In column-flex with flex-wrap:wrap, a child that fills the full main
    axis (height) pushes everything after it to a new column. */
 body.vertical-tb .desktop-break{flex-basis:100% !important;width:0 !important;height:auto !important;margin:0 !important;}
-/* The pen cluster itself becomes a vertical pill. Its internal pieces
-   (penControls = smoothness toggle stacked over size selector; penColors =
-   2×2 color swatches) are already column-friendly and stay as they are.
-   gap:6px gives breathing room between the pen icon and the smoothness
-   toggle below it — in horizontal layout they sit side-by-side and look
-   balanced; stacked vertically they need explicit spacing.
-   !important is needed because penCluster has inline flex-direction. */
-body.vertical-tb #penCluster{flex-direction:column !important;height:auto !important;padding:2px 2px !important;align-items:center !important;gap:6px;}
+/* Column-item width normalization. In horizontal mode, .grp containers
+   hug their contents and natural-width differences (notation .grp at ~50
+   wide vs pen cluster at ~52) are invisible side-by-side. Stacked in a
+   column they read as ragged: the narrower items look "cut off" because
+   the wider ones extend further. Force a uniform width across all direct
+   children of the toolbar so the column is a clean rectangle. 52px gives
+   enough breathing room around the 44px pen circle (4px each side) while
+   matching the 46px penControls with 3px padding. */
+body.vertical-tb .tb > .grp{width:52px;justify-content:center;}
+/* Make the grid-toggle hit area span the full .grp width so the centered
+   pill reads as deliberately placed in a uniform-width container, not as
+   a small element floating in extra space. The visible pill stays the
+   same size; only the click/touch target grows. */
+body.vertical-tb .tb > .grp > .grid-toggle{width:100%;}
+body.vertical-tb #penCluster{flex-direction:column !important;height:auto !important;padding:4px 0 !important;align-items:center !important;gap:6px;width:52px;box-sizing:border-box;}
 .frame.page-out{animation:pageOut .18s ease-in forwards;}
 .frame.page-in{animation:pageIn .18s ease-out forwards;}
 .frame.page-new{animation:pageNew .25s ease-out forwards;}
@@ -1663,9 +1673,11 @@ function resize(){
     const frame = document.querySelector('.frame');
     baseW = frame.clientWidth || Math.min(availW, window.innerWidth);
   } else if(_isLandscapeTablet && !_curPageLandscape){
-    // iPad landscape with a PORTRAIT page: keep page at portrait width,
-    // let height overflow for scrolling.
-    baseW = Math.min(availW, 590);
+    // iPad landscape with a PORTRAIT page: fill the available vertical
+    // space — same approach as a landscape page on iPad-landscape, just
+    // computed off the portrait aspect ratio. Width is constrained by
+    // whichever axis is tighter (usually height on iPad-landscape).
+    baseW = Math.min(availW, availH * LW / LH);
   } else if(_isLandscapeTablet && _curPageLandscape){
     // iPad landscape with a LANDSCAPE page: fill the available vertical
     // space rather than matching portrait's smaller scale. iPad landscape
@@ -3980,6 +3992,10 @@ let _fingerPanActive = false, _fingerPanLastX = 0, _fingerPanLastY = 0;
 function _shouldFingerPan(t0){
   if(_isIPhone || !_isTouch) return false;
   if(!t0 || t0.touchType === 'stylus') return false;
+  // Scrub is a finger-friendly playback gesture — never pan over it, even
+  // when a pencil has been detected. The user expects finger to "play"
+  // the score by sweeping across notes regardless of input history.
+  if(mode === 'scrub') return false;
   if(_pencilDetected) return true;
   return mode === 'none';
 }
@@ -4730,8 +4746,12 @@ function notationMove(x,y){
       scrubX=x; scrubY=y;
       scrubPlayAt(x,y);
       render();
-    } else if(_isMouseMove){
-      // Desktop: show scrub bar as cursor on hover
+    } else if(_isMouseMove && !_isTouch){
+      // Desktop only: show scrub bar as cursor on hover. On iPad, Apple
+      // Pencil hover fires pointermove events through Safari's mouse-event
+      // compat layer, which would otherwise make the scrub bar track the
+      // hovering Pencil tip even when it isn't down. Suppress that — on
+      // touch devices, scrub only follows actual contact.
       scrubX=x; scrubY=y;
       render();
     }
@@ -5738,6 +5758,13 @@ cv.addEventListener('touchstart',e=>{
   if(isDrawMode()) return;
   const t0 = e.touches[0];
   if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
+  // If a text label is being edited, any tap on the canvas (outside the
+  // editor itself, which is a separate DOM element above the canvas)
+  // should commit it. Do this BEFORE the pan check so finger-tap-outside
+  // closes the editor even in pan-eligible states (pencil-detected, no
+  // tool selected). After commit, we still let the touch continue to its
+  // normal handler so the user gets the action they tapped to do.
+  if(editingLabelId !== null) commitTextEditor();
   // Finger-pan check: if conditions are met (see _shouldFingerPan), start
   // panning instead of tool action. Single-finger only — 2-finger pan/pinch
   // is handled by separate onPanStart/Move handlers.
@@ -5749,7 +5776,6 @@ cv.addEventListener('touchstart',e=>{
   const fingerAllowedModes = ['select','lasso','scrub','erase','none'];
   if(_pencilDetected && t0 && t0.touchType !== 'stylus' && !fingerAllowedModes.includes(mode)) return;
   e.preventDefault();
-  if(editingLabelId !== null) commitTextEditor();
   if(_radialOpen){ const src=t0||e.changedTouches[0]; _radialCommit(src.clientX, src.clientY); return; }
   if(mode==='none'){ document.querySelector('[data-mode="select"]').click(); return; }
   const{x,y}=logicalPos(e);
@@ -6494,6 +6520,10 @@ const fd = (() => {
     } else {
       const t0 = e.touches[0];
       if(t0 && t0.touchType === 'stylus'){ _pencilDetected = true; _isPenInput = true; try{localStorage.setItem('pencilDetected','1');}catch(e){} }
+      // Commit any active text-label editor on touch outside it. Match
+      // cv's behavior — happens before pan-check so finger-tap-outside
+      // always closes the editor regardless of pan eligibility.
+      if(editingLabelId !== null) commitTextEditor();
       // Finger-pan check, same logic as cv touchstart — fd.canvas is the
       // free-draw layer that overlays the notation; touches that fall on it
       // when a draw tool isn't active should still pan in pan-eligible cases.
@@ -8468,11 +8498,16 @@ function createNewPage(landscape){
   btn.addEventListener('touchend', cancelHold, {passive:true});
   btn.addEventListener('touchcancel', cancelHold, {passive:true});
 
-  // Click = portrait page (default), unless long-press just opened the menu
+  // Click = same orientation as current page (default), unless long-press
+  // just opened the menu (where the user can pick the other orientation
+  // explicitly). The "next page should match the previous page" behavior
+  // matches how a paper notebook works — flipping to the next page gives
+  // you the same shape of paper unless you deliberately swap.
   btn.addEventListener('click', e => {
     if(suppressClick){ suppressClick = false; return; }
     hide();
-    createNewPage(false);
+    const curLandscape = !!(pages[currentPage] && pages[currentPage].landscape);
+    createNewPage(curLandscape);
   });
 
   // Menu option taps
