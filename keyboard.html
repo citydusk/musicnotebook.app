@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>nanoPIANO</title>
+<title>Keyboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap');
@@ -28,7 +28,12 @@
   :root {
     --n: 2;
     --manual-gap: 12px;
-    --avail-per-manual: calc((96vh - 28px - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
+    /* Vertical reservation for the sustain bar below the manuals: bar
+       height is 1.5 × --ctrl-w (≈ 0.75 × key-w with a 48px floor) plus a
+       manual-gap/2 top margin and the divider line. 60px is a safe
+       upper bound that keeps everything on-screen on iPhone landscape. */
+    --sustain-reserve: 60px;
+    --avail-per-manual: calc((96vh - 28px - var(--sustain-reserve) - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
     --max-key-h: calc((var(--avail-per-manual) - 13px) / 2);
     --max-key-w-from-h: calc(var(--max-key-h) * 7 / 15);
     /* Horizontal budget: viewport minus device padding (8px each side
@@ -237,8 +242,9 @@
   .sustain-bar {
     align-self: center;
     width: calc(var(--key-w) * 8);
-    height: var(--ctrl-w);
-    margin-top: 2px;
+    height: calc(var(--ctrl-w) * 1.5);
+    margin-top: calc(var(--manual-gap) / 2);
+    position: relative;
     background: #3a2f23;
     border: none;
     border-radius: 4px;
@@ -260,6 +266,21 @@
     user-select: none;
     transition: background 0.05s, box-shadow 0.05s, color 0.05s;
     padding: 0;
+  }
+
+  /* Divider above the sustain bar, sitting in the middle of the gap
+     between the bottom manual and the bar — mirrors the inter-manual
+     dividers. Spans the full device width, not just the bar. */
+  .sustain-bar::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--manual-gap) / 2);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    height: 1px;
+    background: rgba(190, 210, 255, 0.1);
+    pointer-events: none;
   }
 
   .sustain-bar.engaged,
