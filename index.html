@@ -126,34 +126,21 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
    .scroll-area's height differ from .tb's fixed 100vh height — the
    centered toolbar then appears shifted relative to the centered page.
    In landscape orientation iPad has no visible notch/inset to dodge,
-   so the padding isn't doing anything useful here anyway. */
-body.vertical-tb .outer{flex-direction:row-reverse;align-items:stretch;padding-right:12px;padding-top:0;padding-bottom:0;}
-body.vertical-tb .tb{flex-direction:column;flex-wrap:wrap;width:auto;min-width:124px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:6px 4px;gap:3px;align-items:flex-start;align-content:center;justify-content:center;overflow:hidden;border-left:0.5px solid rgba(0,0,0,0.1);box-sizing:border-box;}
+   so the padding isn't doing anything useful here anyway.
+
+   Three-column layout: left-tb (pen/utility) | scroll-area (page) |
+   right-tb (notation). Tools frame the page on both sides. */
+body.vertical-tb .outer{flex-direction:row;align-items:stretch;padding:0 12px;}
+body.vertical-tb .tb, body.vertical-tb .tb-right{flex-direction:column;flex-wrap:wrap;width:auto;min-width:62px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:6px 4px;gap:3px;align-items:flex-start;align-content:flex-start;justify-content:flex-start;overflow:hidden;box-sizing:border-box;}
+body.vertical-tb .tb{border-right:0.5px solid rgba(0,0,0,0.1);border-left:none;}
+body.vertical-tb .tb-right{display:flex;border-left:0.5px solid rgba(0,0,0,0.1);}
 body.vertical-tb .grp{flex-direction:column;min-height:auto;}
-/* Column-item width normalization (see below). The grid toggle's parent
-   .grp now gets the same 52px width as everything else, with the toggle
-   centered inside. No grid-toggle-specific width override needed. */
-/* Right-align the paper inside scroll-area so the page sits adjacent to
-   the toolbar instead of floating in the centre with empty space between
-   it and the toolbar. .scroll-area is already a flex column; overriding
-   align-items from stretch to flex-end takes paper out of its full-width
-   stretch and places it at the cross-axis end (right side, in horizontal
-   layout terms). All leftover horizontal space falls on the LEFT of the
-   page rather than between page and toolbar. */
-body.vertical-tb .scroll-area{flex:1;width:auto;min-width:0;align-items:flex-end;}
-/* Force the row-break element to break into a new column in vertical mode.
-   In column-flex with flex-wrap:wrap, a child that fills the full main
-   axis (height) pushes everything after it to a new column. */
+body.vertical-tb .scroll-area{flex:1;width:auto;min-width:0;align-items:center;}
+/* Hide tb-right outside vertical-tb mode (it's an empty container in
+   horizontal mode and shouldn't affect layout). */
+.tb-right{display:none;}
 body.vertical-tb .desktop-break{flex-basis:100% !important;width:0 !important;height:auto !important;margin:0 !important;}
-/* Column-item width normalization. In horizontal mode, .grp containers
-   hug their contents and natural-width differences (notation .grp at ~50
-   wide vs pen cluster at ~52) are invisible side-by-side. Stacked in a
-   column they read as ragged: the narrower items look "cut off" because
-   the wider ones extend further. Force a uniform width across all direct
-   children of the toolbar so the column is a clean rectangle. 52px gives
-   enough breathing room around the 44px pen circle (4px each side) while
-   matching the 46px penControls with 3px padding. */
-body.vertical-tb .tb > .grp{width:52px;justify-content:center;}
+body.vertical-tb .tb > .grp, body.vertical-tb .tb-right > .grp{width:52px;justify-content:center;}
 /* Make the grid-toggle hit area span the full .grp width so the centered
    pill reads as deliberately placed in a uniform-width container, not as
    a small element floating in extra space. The visible pill stays the
@@ -768,6 +755,11 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   </div>
 </div></div>
 </div>
+<!-- Right-side toolbar for vertical-tb mode (iPad landscape). Empty in
+     other modes; in vertical-tb mode JS moves the notation tools (row 1
+     groups, everything before .desktop-break) here, framing the page
+     between two toolbars: pen/utility on the left, notation on the right. -->
+<div class="tb tb-right" role="toolbar" aria-label="Notation tools (right side)"></div>
 </div>
 
 <script>
@@ -1003,11 +995,53 @@ function applyPageGeometry(landscape){
 // page orientation. Page orientation (per-page landscape flag) is
 // independent of toolbar orientation now.
 function toggleVerticalToolbar(){
-  if(_isIPhone){ document.body.classList.remove('vertical-tb'); return; }
+  if(_isIPhone){
+    document.body.classList.remove('vertical-tb');
+    _restoreUnifiedToolbar();
+    return;
+  }
   const isIpad = _isTouch && !_isIPhone;
   const isLandscapeOrientation = window.matchMedia('(orientation:landscape)').matches;
   const wantVertical = isIpad && isLandscapeOrientation;
   document.body.classList.toggle('vertical-tb', wantVertical);
+  if(wantVertical) _splitToolbarForVertical();
+  else _restoreUnifiedToolbar();
+}
+
+// Split the single .tb element into a two-column layout for vertical-tb
+// mode by moving the row-1 groups (everything BEFORE .desktop-break) out
+// of .tb and into .tb-right. The break element itself stays in .tb (not
+// rendered visually but kept as a marker for restoration). Idempotent:
+// safe to call when already split.
+function _splitToolbarForVertical(){
+  const leftTb = document.querySelector('.tb:not(.tb-right)');
+  const rightTb = document.querySelector('.tb-right');
+  const breakEl = leftTb && leftTb.querySelector('.desktop-break');
+  if(!leftTb || !rightTb || !breakEl) return;
+  // If already split (rightTb has children), nothing to do.
+  if(rightTb.children.length > 0) return;
+  // Move all siblings BEFORE the desktop-break into rightTb. Iterate
+  // forward by removing the first child until we hit the break.
+  while(leftTb.firstChild && leftTb.firstChild !== breakEl){
+    rightTb.appendChild(leftTb.firstChild);
+  }
+}
+
+// Restore the unified toolbar by moving any children of .tb-right back
+// into .tb in their original positions (before .desktop-break). This is
+// the inverse of _splitToolbarForVertical and is called when leaving
+// vertical-tb mode (rotation to portrait, etc.).
+function _restoreUnifiedToolbar(){
+  const leftTb = document.querySelector('.tb:not(.tb-right)');
+  const rightTb = document.querySelector('.tb-right');
+  const breakEl = leftTb && leftTb.querySelector('.desktop-break');
+  if(!leftTb || !rightTb || !breakEl) return;
+  if(rightTb.children.length === 0) return;
+  // Move all children of rightTb back into leftTb, inserting BEFORE the
+  // break element to restore the original DOM order.
+  while(rightTb.firstChild){
+    leftTb.insertBefore(rightTb.firstChild, breakEl);
+  }
 }
 
 // Initial portrait geometry — must run before any code below references
