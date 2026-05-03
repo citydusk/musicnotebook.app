@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>nanoPIANO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Master sizing: --key-w scales with viewport, --key-h is computed
+     from it so the 0.56 : 1.2 ratio is preserved exactly at every size.
+     --n sets how many keyboards stack vertically. The horizontal vw
+     factor leaves room for octave control buttons on the left of each manual. */
+  :root {
+    --n: 2;
+    --manual-gap: 12px;
+    --avail-per-manual: calc((96vh - 28px - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
+    --max-key-h: calc((var(--avail-per-manual) - 13px) / 2);
+    --max-key-w-from-h: calc(var(--max-key-h) * 7 / 15);
+    --key-w: clamp(26px, min(5.3vw, var(--max-key-w-from-h)), 76px);
+    --gap: max(3px, calc(var(--key-w) * 0.07));
+    --subcol: calc((var(--key-w) - var(--gap)) / 2);
+    --key-h: calc(var(--key-w) * 15 / 7);
+    --ctrl-w: max(32px, calc(var(--key-w) * 0.5));
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse at center, #1c1410 0%, #0a0604 70%, #050302 100%);
+    background-color: #0a0604;
+    font-family: 'Inter', sans-serif;
+    color: #d8d8d8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    position: fixed;
+    inset: 0;
+  }
+
+  /* Subtle wood grain hint behind the device */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(98deg, transparent 0 80px, rgba(120,60,20,0.04) 80px 81px),
+      repeating-linear-gradient(95deg, transparent 0 200px, rgba(80,40,15,0.05) 200px 201px);
+    z-index: 0;
+  }
+
+  .device {
+    position: relative;
+    z-index: 1;
+    max-width: 98vw;
+    max-height: 96vh;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--manual-gap);
+  }
+
+  /* === MANUAL: a row containing octave controls + the keyboard === */
+  .manual {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    position: relative;
+  }
+
+  /* Subtle dividing line above each manual — a thin cool-tinted line
+     sitting in the middle of the inter-manual gap (or just above the
+     first manual, inside the device's top padding). */
+  .manual::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--manual-gap) / 2);
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(190, 210, 255, 0.1);
+    pointer-events: none;
+  }
+
+  .manual-controls {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    width: var(--ctrl-w);
+    flex-shrink: 0;
+    /* Push the buttons down so they line up with the top edge of the
+       naturals row. The keyboard has 4px top padding, then the sharps row
+       (--key-h), then a gap before the naturals begin. */
+    padding-top: calc(4px + var(--key-h) + var(--gap));
+  }
+
+  /* Square control buttons — flatter and smaller than the playable keys
+     so they read clearly as utility controls rather than another key.
+     Cool slate-blue tint sets them apart from the neutral grays of the
+     keys while staying inside the cool-phosphor color palette. */
+  .oct-btn {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #2a3242;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    box-shadow:
+      0 1px 0 rgba(180, 200, 240, 0.06) inset,
+      0 0 0 0.5px rgba(0,0,0,0.6),
+      0 1px 2px rgba(0,0,0,0.5);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.05s, box-shadow 0.05s;
+  }
+
+  .oct-btn:active {
+    background: #161c28;
+    box-shadow:
+      0 1px 3px rgba(0,0,0,0.5) inset,
+      0 0 0 0.5px rgba(0,0,0,0.7);
+  }
+
+  .oct-btn:disabled {
+    background: #1c222e;
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.55),
+      0 1px 1px rgba(0,0,0,0.35);
+    cursor: not-allowed;
+  }
+
+  .oct-btn .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(5.5px, calc(var(--key-w) * 0.1), 8px);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: rgba(225, 235, 255, 0.5);
+    text-shadow: 0 0 3px rgba(170, 200, 255, 0.22);
+    line-height: 1;
+  }
+
+  .oct-btn .sym {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(11px, calc(var(--key-w) * 0.22), 17px);
+    font-weight: 600;
+    line-height: 1;
+    color: rgba(225, 235, 255, 0.8);
+    text-shadow: 0 0 4px rgba(170, 200, 255, 0.3);
+    margin-top: 2px;
+  }
+
+  .oct-btn:active .lbl { color: rgba(240, 246, 255, 0.7); }
+  .oct-btn:active .sym { color: rgba(240, 246, 255, 0.95); }
+
+  /* Edge-color cues — when a manual is at one of the marked-out registers,
+     its OCT button echoes that register's color. OCT- tracks the lowest
+     visible note, OCT+ tracks the highest. Same warm-to-cool palette as
+     the C labels themselves, so the controls stay visually unified with
+     the keys they affect. */
+  .oct-btn.at-c1 .lbl {
+    color: rgba(255, 145, 50, 0.55);
+    text-shadow: 0 0 3px rgba(255, 110, 20, 0.32), 0 0 1px rgba(255, 180, 70, 0.4);
+  }
+  .oct-btn.at-c1 .sym {
+    color: rgba(255, 175, 80, 0.88);
+    text-shadow: 0 0 4px rgba(255, 110, 20, 0.45), 0 0 1px rgba(255, 180, 70, 0.5);
+  }
+
+  .oct-btn.at-c0 .lbl {
+    color: rgba(245, 85, 70, 0.55);
+    text-shadow: 0 0 3px rgba(220, 50, 40, 0.35), 0 0 1px rgba(255, 110, 90, 0.4);
+  }
+  .oct-btn.at-c0 .sym {
+    color: rgba(255, 110, 95, 0.88);
+    text-shadow: 0 0 4px rgba(220, 50, 40, 0.5), 0 0 1px rgba(255, 130, 110, 0.5);
+  }
+
+  .oct-btn.at-c7 .lbl {
+    color: rgba(90, 215, 130, 0.55);
+    text-shadow: 0 0 3px rgba(40, 185, 90, 0.32), 0 0 1px rgba(150, 235, 175, 0.4);
+  }
+  .oct-btn.at-c7 .sym {
+    color: rgba(125, 235, 160, 0.88);
+    text-shadow: 0 0 4px rgba(40, 185, 90, 0.45), 0 0 1px rgba(170, 240, 190, 0.5);
+  }
+
+  .oct-btn.at-c8 .lbl {
+    color: rgba(115, 200, 240, 0.55);
+    text-shadow: 0 0 3px rgba(75, 175, 225, 0.32), 0 0 1px rgba(180, 220, 250, 0.4);
+  }
+  .oct-btn.at-c8 .sym {
+    color: rgba(150, 220, 250, 0.88);
+    text-shadow: 0 0 4px rgba(75, 175, 225, 0.45), 0 0 1px rgba(190, 230, 255, 0.5);
+  }
+
+  /* === SUSTAIN BAR === */
+  /* Slim spacebar-style hold control, centered below the bottom manual.
+     Subtle bronze idle distinguishes it from the slate OCT buttons —
+     two different "metals" for two different controls. */
+  .sustain-bar {
+    align-self: center;
+    width: calc(var(--key-w) * 8);
+    height: var(--ctrl-w);
+    margin-top: 2px;
+    background: #3a2f23;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(5.5px, calc(var(--key-w) * 0.1), 8px);
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: rgba(225, 235, 255, 0.55);
+    text-shadow:
+      0 0 4px rgba(170, 200, 255, 0.3),
+      0 0 1px rgba(220, 232, 255, 0.4);
+    box-shadow:
+      0 1px 0 rgba(240, 215, 170, 0.07) inset,
+      0 0 0 0.5px rgba(0,0,0,0.6),
+      0 1px 2px rgba(0,0,0,0.5);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.05s, box-shadow 0.05s, color 0.05s;
+    padding: 0;
+  }
+
+  .sustain-bar.engaged,
+  .sustain-bar:active {
+    background: #1c1610;
+    box-shadow:
+      0 1px 3px rgba(0,0,0,0.6) inset,
+      0 0 0 0.5px rgba(0,0,0,0.75);
+    color: rgba(240, 246, 255, 0.85);
+    text-shadow:
+      0 0 5px rgba(170, 200, 255, 0.5),
+      0 0 1px rgba(220, 232, 255, 0.6);
+  }
+
+  /* Locked: double-tap engaged hands-free. Warm amber to distinguish from
+     the cool-blue "actively held" engaged state. */
+  .sustain-bar.locked {
+    background: #1a1612;
+    box-shadow:
+      0 1px 3px rgba(0,0,0,0.6) inset,
+      0 0 0 0.5px rgba(0,0,0,0.75);
+    color: rgba(255, 175, 80, 0.95);
+    text-shadow:
+      0 0 6px rgba(255, 120, 30, 0.55),
+      0 0 1px rgba(255, 200, 100, 0.6);
+  }
+
+  /* === KEYBOARD AREA === */
+  .keyboard {
+    display: grid;
+    /* 30 sub-columns: each natural occupies 2 cols, sharps offset by 1 col
+       to sit between adjacent naturals. Explicit sizing locks the aspect
+       ratio of every key at exactly 0.56 : 1.2. */
+    grid-template-columns: repeat(30, var(--subcol));
+    grid-template-rows: var(--key-h) var(--key-h);
+    gap: var(--gap);
+    padding: 4px 0;
+    touch-action: none;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .key {
+    border-radius: 5px;
+    cursor: pointer;
+    touch-action: none;
+    position: relative;
+    transition: background 0.05s ease, box-shadow 0.05s ease;
+  }
+
+  /* Sharps — TOP row, LIGHT/silver colored (inverted from a real piano) */
+  .key.sharp {
+    grid-row: 1;
+    background: linear-gradient(180deg, #e8e8e6 0%, #d4d4d2 30%, #b8b8b6 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 -2px 4px rgba(0,0,0,0.18) inset,
+      0 1px 0 rgba(255,255,255,0.35) inset,
+      0 2px 3px rgba(0,0,0,0.6),
+      0 0 0 0.5px rgba(0,0,0,0.4);
+  }
+
+  /* Naturals — BOTTOM row, flat dark gray (slightly lighter than chassis to stand out) */
+  .key.natural {
+    grid-row: 2;
+    background: #313133;
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.7),
+      0 2px 3px rgba(0,0,0,0.45);
+  }
+
+  /* Active state — gradient suggests the slope of a depressed piano key:
+     light at top (back of key, the pivot stays high), darkening toward
+     the bottom (front of key, where the player's finger has pushed it down).
+     Inset shadow at the bottom edge enhances the "tilted down" feel. */
+  .key.natural.active {
+    background: linear-gradient(180deg, #353537 0%, #222224 55%, #101012 100%);
+    box-shadow:
+      0 -4px 7px rgba(0,0,0,0.7) inset,
+      0 -1px 2px rgba(0,0,0,0.5) inset,
+      0 0 0 0.5px rgba(0,0,0,0.8);
+  }
+
+  .key.sharp.active {
+    background: linear-gradient(180deg, #e0e0de 0%, #b4b4b2 55%, #828280 100%);
+    box-shadow:
+      0 -4px 7px rgba(0,0,0,0.32) inset,
+      0 -1px 2px rgba(0,0,0,0.22) inset,
+      0 0 0 0.5px rgba(0,0,0,0.5);
+  }
+
+  /* Scientific pitch notation label on each C — pulls "C2", "C3", etc.
+     directly from the key's data-note attribute. */
+  .key.natural.octave-c::after {
+    content: attr(data-note);
+    position: absolute;
+    bottom: 6%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(6px, calc(var(--key-w) * 0.156), 10px);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: rgba(225, 235, 255, 0.45);
+    text-shadow:
+      0 0 4px rgba(170, 200, 255, 0.28),
+      0 0 1px rgba(220, 232, 255, 0.4);
+    pointer-events: none;
+  }
+
+  .key.natural.active.octave-c::after {
+    color: rgba(240, 246, 255, 0.7);
+    text-shadow:
+      0 0 6px rgba(170, 200, 255, 0.45),
+      0 0 2px rgba(220, 232, 255, 0.55);
+  }
+
+  /* Middle C marker — a small period dot just above the C4 label, same
+     cool white glow as the labels themselves. The bottom offset matches
+     the label's bottom (6%) plus the label's font-size plus a 2px gap,
+     so the dot always sits right above the letters at any key size. */
+  .key.natural.octave-c[data-note="C4"]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(6% + clamp(6px, calc(var(--key-w) * 0.156), 10px) + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(225, 235, 255, 0.45);
+    box-shadow:
+      0 0 4px rgba(170, 200, 255, 0.45),
+      0 0 1px rgba(220, 232, 255, 0.55);
+    pointer-events: none;
+  }
+
+  .key.natural.active.octave-c[data-note="C4"]::before {
+    background: rgba(240, 246, 255, 0.7);
+    box-shadow:
+      0 0 6px rgba(170, 200, 255, 0.6),
+      0 0 2px rgba(220, 232, 255, 0.7);
+  }
+
+  /* C1 — warm orange phosphor, marking the bottom of the sampled range. */
+  .key.natural.octave-c[data-note="C1"]::after {
+    color: rgba(255, 145, 50, 0.72);
+    text-shadow:
+      0 0 4px rgba(255, 110, 20, 0.45),
+      0 0 1px rgba(255, 180, 70, 0.5);
+  }
+  .key.natural.active.octave-c[data-note="C1"]::after {
+    color: rgba(255, 175, 80, 0.95);
+    text-shadow:
+      0 0 6px rgba(255, 120, 30, 0.65),
+      0 0 2px rgba(255, 200, 100, 0.6);
+  }
+
+  /* C0 — backlit red, marking the sub-sampled range where the lowest
+     notes are pitch-shifted down from A0 and start to sound rough. */
+  .key.natural.octave-c[data-note="C0"]::after {
+    color: rgba(245, 80, 65, 0.7);
+    text-shadow:
+      0 0 4px rgba(220, 50, 40, 0.5),
+      0 0 1px rgba(255, 110, 90, 0.5);
+  }
+  .key.natural.active.octave-c[data-note="C0"]::after {
+    color: rgba(255, 115, 95, 0.95);
+    text-shadow:
+      0 0 6px rgba(230, 60, 50, 0.7),
+      0 0 2px rgba(255, 140, 120, 0.6);
+  }
+
+  /* C7 — phosphor green, marking the upper register. */
+  .key.natural.octave-c[data-note="C7"]::after {
+    color: rgba(90, 215, 130, 0.72);
+    text-shadow:
+      0 0 4px rgba(40, 185, 90, 0.45),
+      0 0 1px rgba(150, 235, 175, 0.5);
+  }
+  .key.natural.active.octave-c[data-note="C7"]::after {
+    color: rgba(125, 240, 160, 0.95);
+    text-shadow:
+      0 0 6px rgba(55, 200, 105, 0.65),
+      0 0 2px rgba(175, 245, 195, 0.6);
+  }
+
+  /* C8 — cool sky blue, marking the very top of the piano range. */
+  .key.natural.octave-c[data-note="C8"]::after {
+    color: rgba(115, 200, 240, 0.72);
+    text-shadow:
+      0 0 4px rgba(75, 175, 225, 0.45),
+      0 0 1px rgba(180, 220, 250, 0.5);
+  }
+  .key.natural.active.octave-c[data-note="C8"]::after {
+    color: rgba(150, 225, 250, 0.95);
+    text-shadow:
+      0 0 6px rgba(85, 195, 240, 0.65),
+      0 0 2px rgba(200, 235, 255, 0.6);
+  }
+</style>
+</head>
+<body>
+
+<div class="device" id="device"></div>
+
+<script>
+  // === Layout config ===
+  const NATURALS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const SHARPS = [
+    { name: 'C#', afterIdx: 0 },
+    { name: 'D#', afterIdx: 1 },
+    { name: 'F#', afterIdx: 3 },
+    { name: 'G#', afterIdx: 4 },
+    { name: 'A#', afterIdx: 5 },
+  ];
+  const OCTAVE_COUNT = 2;
+  // Salamander samples cover A0–C8. Allow octaveStart from 0 (showing C0–C2,
+  // with the lowest notes pitch-shifted from A0) to 6 (showing C6–C8).
+  const MIN_OCT = 0;
+  const MAX_OCT = 6;
+
+  // Stacked keyboard manuals — each spans 2 octaves at a different starting
+  // pitch, so together they cover the useful range of a piano like the
+  // manuals on a pipe organ console. Top manual = treble range (right hand),
+  // bottom manual = bass range (left hand).
+  const MANUALS = [
+    { octaveStart: 4 },  // top:    C4 — C6
+    { octaveStart: 2 },  // bottom: C2 — C4
+  ];
+
+  let sampler = null;
+  let samplesLoaded = false;
+  let audioStarted = false;
+  const velocity = 0.85;
+
+  const activeNotes = new Map(); // note -> Set of touch ids
+  const touchToNote = new Map(); // touch id -> note
+
+  // Sustain pedal state — when engaged, lifted notes keep ringing until
+  // the bar is released, mimicking a piano's damper pedal.
+  let sustainOn = false;
+  let sustainLocked = false;
+  let lastSustainTapAt = 0;
+  const DOUBLE_TAP_MS = 400;
+  const sustainedNotes = new Set();
+  const sustainInputs = new Set();
+
+  // === Salamander Grand Piano (Alexander Holm), hosted by Tone.js ===
+  const SALAMANDER_BASE = "https://tonejs.github.io/audio/salamander/";
+  const SAMPLE_NOTES = {
+    "A0": "A0.mp3", "C1": "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3",
+    "A1": "A1.mp3", "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3",
+    "A2": "A2.mp3", "C3": "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3",
+    "A3": "A3.mp3", "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3",
+    "A4": "A4.mp3", "C5": "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3",
+    "A5": "A5.mp3", "C6": "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3",
+    "A6": "A6.mp3", "C7": "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3",
+    "A7": "A7.mp3", "C8": "C8.mp3"
+  };
+
+  // === Build keyboards ===
+  function buildAllManuals() {
+    const device = document.getElementById('device');
+    device.innerHTML = '';
+    document.documentElement.style.setProperty('--n', MANUALS.length);
+    MANUALS.forEach((m, idx) => {
+      // Manual wrapper: controls on the left, keyboard on the right
+      const manual = document.createElement('div');
+      manual.className = 'manual';
+      manual.dataset.manualIdx = idx;
+
+      // Stacked octave +/- buttons
+      const controls = document.createElement('div');
+      controls.className = 'manual-controls';
+
+      const upBtn = document.createElement('button');
+      upBtn.className = 'oct-btn oct-up';
+      upBtn.innerHTML = '<span class="lbl">OCT</span><span class="sym">+</span>';
+      upBtn.setAttribute('aria-label', 'Octave up');
+      upBtn.addEventListener('click', () => shiftOctave(idx, +1));
+
+      const downBtn = document.createElement('button');
+      downBtn.className = 'oct-btn oct-down';
+      downBtn.innerHTML = '<span class="lbl">OCT</span><span class="sym">\u2212</span>';
+      downBtn.setAttribute('aria-label', 'Octave down');
+      downBtn.addEventListener('click', () => shiftOctave(idx, -1));
+
+      controls.appendChild(upBtn);
+      controls.appendChild(downBtn);
+
+      const kb = document.createElement('div');
+      kb.className = 'keyboard';
+      kb.dataset.manualIdx = idx;
+      attachTouchHandlers(kb);
+
+      manual.appendChild(controls);
+      manual.appendChild(kb);
+      device.appendChild(manual);
+
+      buildManual(kb, m.octaveStart);
+    });
+
+    // Sustain bar: thin spacebar-style hold control under the bottom manual.
+    const sustainBar = document.createElement('button');
+    sustainBar.className = 'sustain-bar';
+    sustainBar.textContent = 'SUSTAIN';
+    sustainBar.setAttribute('aria-label', 'Sustain pedal (hold to engage)');
+    attachSustainHandlers(sustainBar);
+    device.appendChild(sustainBar);
+
+    refreshOctaveButtonStates();
+  }
+
+  function shiftOctave(manualIdx, direction) {
+    const m = MANUALS[manualIdx];
+    const newOct = m.octaveStart + direction;
+    if (newOct < MIN_OCT || newOct > MAX_OCT) return;
+    // Stop any sounding notes before swapping out the keys, otherwise
+    // notes whose .key elements are about to vanish would stay stuck on.
+    releaseAll();
+    m.octaveStart = newOct;
+    const wrap = document.querySelector(`.manual[data-manual-idx="${manualIdx}"]`);
+    const kb = wrap.querySelector('.keyboard');
+    kb.innerHTML = '';
+    buildManual(kb, m.octaveStart);
+    refreshOctaveButtonStates();
+  }
+
+  function refreshOctaveButtonStates() {
+    document.querySelectorAll('.manual').forEach(wrap => {
+      const idx = parseInt(wrap.dataset.manualIdx, 10);
+      const oct = MANUALS[idx].octaveStart;
+      const upBtn = wrap.querySelector('.oct-up');
+      const downBtn = wrap.querySelector('.oct-down');
+      upBtn.disabled = (oct >= MAX_OCT);
+      downBtn.disabled = (oct <= MIN_OCT);
+      // Edge-color cues. OCT- tracks the lowest note visible (= octaveStart),
+      // OCT+ tracks the highest (= octaveStart + 2).
+      downBtn.classList.toggle('at-c0', oct === 0);
+      downBtn.classList.toggle('at-c1', oct === 1);
+      upBtn.classList.toggle('at-c7', oct === 5);
+      upBtn.classList.toggle('at-c8', oct === 6);
+    });
+  }
+
+  function buildManual(kb, octaveStart) {
+    // Bottom row: 15 naturals = 2 full octaves (14) + final C
+    let nIdx = 0;
+    for (let oct = 0; oct < OCTAVE_COUNT; oct++) {
+      NATURALS.forEach((n) => {
+        const note = n + (octaveStart + oct);
+        const el = makeKey(note, 'natural');
+        if (n === 'C') el.classList.add('octave-c');
+        el.style.gridColumn = `${nIdx * 2 + 1} / span 2`;
+        kb.appendChild(el);
+        nIdx++;
+      });
+    }
+    const finalC = 'C' + (octaveStart + OCTAVE_COUNT);
+    const finalEl = makeKey(finalC, 'natural');
+    finalEl.classList.add('octave-c');
+    finalEl.style.gridColumn = `${nIdx * 2 + 1} / span 2`;
+    kb.appendChild(finalEl);
+
+    // Top row: sharps positioned to straddle the boundary between adjacent naturals
+    for (let oct = 0; oct < OCTAVE_COUNT; oct++) {
+      const naturalOffset = oct * 7;
+      SHARPS.forEach((s) => {
+        const note = s.name + (octaveStart + oct);
+        const el = makeKey(note, 'sharp');
+        const startCol = (s.afterIdx + naturalOffset) * 2 + 2;
+        el.style.gridColumn = `${startCol} / span 2`;
+        kb.appendChild(el);
+      });
+    }
+  }
+
+  function makeKey(note, kind) {
+    const el = document.createElement('div');
+    el.className = `key ${kind}`;
+    el.dataset.note = note;
+    return el;
+  }
+
+  // === Audio ===
+  function initSampler() {
+    sampler = new Tone.Sampler({
+      urls: SAMPLE_NOTES,
+      baseUrl: SALAMANDER_BASE,
+      release: 1.2,
+      onload: () => { samplesLoaded = true; },
+      onerror: (e) => { console.error(e); }
+    }).toDestination();
+  }
+
+  // === Note triggers ===
+  function noteOn(note, touchId) {
+    if (!audioStarted) {
+      Tone.start().then(() => { audioStarted = true; });
+    }
+    if (!sampler || !samplesLoaded) return;
+
+    if (!activeNotes.has(note)) activeNotes.set(note, new Set());
+    activeNotes.get(note).add(touchId);
+
+    sampler.triggerAttack(note, undefined, velocity);
+
+    document.querySelectorAll(`.key[data-note="${CSS.escape(note)}"]`)
+      .forEach(el => el.classList.add('active'));
+  }
+
+  function noteOff(note, touchId) {
+    if (!sampler) return;
+    const set = activeNotes.get(note);
+    if (set) {
+      set.delete(touchId);
+      if (set.size === 0) {
+        activeNotes.delete(note);
+        if (sustainOn) {
+          // Hold the note ringing until sustain bar is released.
+          sustainedNotes.add(note);
+        } else {
+          sampler.triggerRelease(note);
+        }
+        document.querySelectorAll(`.key[data-note="${CSS.escape(note)}"]`)
+          .forEach(el => el.classList.remove('active'));
+      }
+    }
+  }
+
+  function releaseAll() {
+    if (sampler) sampler.releaseAll();
+    activeNotes.clear();
+    touchToNote.clear();
+    sustainedNotes.clear();
+    document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
+  }
+
+  function setSustain(on) {
+    if (sustainOn === on) return;
+    sustainOn = on;
+    const bar = document.querySelector('.sustain-bar');
+    if (bar) bar.classList.toggle('engaged', on);
+    if (!on && sampler) {
+      // Releasing the pedal lets all sustained notes ring out their tails.
+      sustainedNotes.forEach(note => sampler.triggerRelease(note));
+      sustainedNotes.clear();
+    }
+  }
+
+  // === Multitouch ===
+  function getKeyAtPoint(x, y) {
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+      if (el.classList && el.classList.contains('key')) return el.dataset.note;
+    }
+    return null;
+  }
+
+  function attachTouchHandlers(kb) {
+    kb.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const note = getKeyAtPoint(t.clientX, t.clientY);
+        if (note) {
+          touchToNote.set(t.identifier, note);
+          noteOn(note, t.identifier);
+        }
+      }
+    }, { passive: false });
+
+    kb.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const newNote = getKeyAtPoint(t.clientX, t.clientY);
+        const oldNote = touchToNote.get(t.identifier);
+        if (newNote !== oldNote) {
+          if (oldNote) noteOff(oldNote, t.identifier);
+          if (newNote) {
+            touchToNote.set(t.identifier, newNote);
+            noteOn(newNote, t.identifier);
+          } else {
+            touchToNote.delete(t.identifier);
+          }
+        }
+      }
+    }, { passive: false });
+
+    function endTouches(e) {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const note = touchToNote.get(t.identifier);
+        if (note) noteOff(note, t.identifier);
+        touchToNote.delete(t.identifier);
+      }
+    }
+    kb.addEventListener('touchend', endTouches, { passive: false });
+    kb.addEventListener('touchcancel', endTouches, { passive: false });
+
+    // Mouse fallback (desktop testing)
+    kb.addEventListener('mousedown', (e) => {
+      mouseDown = true;
+      const n = getKeyAtPoint(e.clientX, e.clientY);
+      if (n) { mouseNote = n; noteOn(n, 'mouse'); }
+    });
+    kb.addEventListener('mousemove', (e) => {
+      if (!mouseDown) return;
+      const n = getKeyAtPoint(e.clientX, e.clientY);
+      if (n !== mouseNote) {
+        if (mouseNote) noteOff(mouseNote, 'mouse');
+        if (n) { mouseNote = n; noteOn(n, 'mouse'); }
+        else mouseNote = null;
+      }
+    });
+  }
+
+  function tryDoubleTapLock(bar) {
+    const now = Date.now();
+    const isDoubleTap = (now - lastSustainTapAt) < DOUBLE_TAP_MS;
+    lastSustainTapAt = now;
+    if (!isDoubleTap) return false;
+    sustainLocked = !sustainLocked;
+    bar.classList.toggle('locked', sustainLocked);
+    if (sustainLocked) {
+      setSustain(true);
+    } else if (sustainInputs.size === 0) {
+      setSustain(false);
+    }
+    return true;
+  }
+
+  function attachSustainHandlers(bar) {
+    bar.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const wasDouble = tryDoubleTapLock(bar);
+      for (const t of e.changedTouches) sustainInputs.add(t.identifier);
+      if (!wasDouble) setSustain(true);
+    }, { passive: false });
+
+    function endTouch(e) {
+      e.preventDefault();
+      for (const t of e.changedTouches) sustainInputs.delete(t.identifier);
+      if (!sustainLocked) setSustain(sustainInputs.size > 0);
+    }
+    bar.addEventListener('touchend', endTouch, { passive: false });
+    bar.addEventListener('touchcancel', endTouch, { passive: false });
+
+    bar.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const wasDouble = tryDoubleTapLock(bar);
+      sustainInputs.add('mouse');
+      if (!wasDouble) setSustain(true);
+    });
+  }
+
+  // Mouseup releases sustain if the mouse was the engager. Window-level
+  // because the cursor may have moved off the bar before release.
+  window.addEventListener('mouseup', () => {
+    if (sustainInputs.has('mouse')) {
+      sustainInputs.delete('mouse');
+      if (!sustainLocked) setSustain(sustainInputs.size > 0);
+    }
+  });
+
+  let mouseDown = false, mouseNote = null;
+  window.addEventListener('mouseup', () => {
+    mouseDown = false;
+    if (mouseNote) { noteOff(mouseNote, 'mouse'); mouseNote = null; }
+  });
+
+  // === Computer keyboard for desktop testing ===
+  // Bottom row of letters → bottom manual (bass, C2-C4)
+  // Top row of letters → top manual (treble, C4-C6)
+  const KEY_MAP = {
+    // bottom manual (octaveStart = MANUALS[1].octaveStart = 2)
+    'z':{m:1,n:'C'}, 's':{m:1,n:'C#'}, 'x':{m:1,n:'D'}, 'd':{m:1,n:'D#'},
+    'c':{m:1,n:'E'}, 'v':{m:1,n:'F'}, 'g':{m:1,n:'F#'}, 'b':{m:1,n:'G'},
+    'h':{m:1,n:'G#'}, 'n':{m:1,n:'A'}, 'j':{m:1,n:'A#'}, 'm':{m:1,n:'B'},
+    // top manual (octaveStart = MANUALS[0].octaveStart = 4)
+    'q':{m:0,n:'C'}, '2':{m:0,n:'C#'}, 'w':{m:0,n:'D'}, '3':{m:0,n:'D#'},
+    'e':{m:0,n:'E'}, 'r':{m:0,n:'F'}, '5':{m:0,n:'F#'}, 't':{m:0,n:'G'},
+    '6':{m:0,n:'G#'}, 'y':{m:0,n:'A'}, '7':{m:0,n:'A#'}, 'u':{m:0,n:'B'},
+    'i':{m:0,n:'C',o:1},
+  };
+  const pressed = new Set();
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (pressed.has(k) || !KEY_MAP[k]) return;
+    pressed.add(k);
+    const map = KEY_MAP[k];
+    const note = map.n + (MANUALS[map.m].octaveStart + (map.o || 0));
+    noteOn(note, 'kb-' + k);
+  });
+  window.addEventListener('keyup', (e) => {
+    const k = e.key.toLowerCase();
+    if (!pressed.has(k)) return;
+    pressed.delete(k);
+    const map = KEY_MAP[k];
+    if (!map) return;
+    const note = map.n + (MANUALS[map.m].octaveStart + (map.o || 0));
+    noteOff(note, 'kb-' + k);
+  });
+
+  // Prevent iOS double-tap zoom
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Init
+  buildAllManuals();
+  initSampler();
+</script>
+
+</body>
+</html>
