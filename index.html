@@ -69,7 +69,7 @@ body.light{
 body.light .frame canvas{box-shadow:0 1px 4px rgba(0,0,0,.08)}
 #tooltip{position:fixed;background:#2A1E0E;color:#F8F3E7;font-size:11px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;padding:4px 8px;border-radius:4px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;max-width:280px;white-space:normal;line-height:1.4;letter-spacing:0.01em;}
 .outer{display:flex;flex-direction:column;align-items:center;width:100%;height:100vh;height:100dvh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
-.tb{display:flex;align-items:center;gap:3px;padding:4px 0;background:var(--tb-bg);flex-wrap:wrap;width:100%;max-width:590px;flex-shrink:0;}
+.tb{display:flex;align-items:center;justify-content:center;gap:3px;padding:4px 0;background:var(--tb-bg);flex-wrap:wrap;width:100%;max-width:650px;flex-shrink:0;}
 .sep{width:0;height:0;flex-shrink:0}
 .grp{display:flex;align-items:center;gap:0;background:var(--grp-bg);border:0.5px solid var(--grp-border);border-radius:11px;padding:1px 1px;box-shadow:var(--grp-shadow);min-height:39px;}
 .btn{background:transparent;border:0.5px solid transparent;border-radius:8px;color:var(--btn-color);padding:0;cursor:pointer;font-size:12px;font-family:Georgia,serif;line-height:1.5;transition:background .1s;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;}
@@ -121,7 +121,13 @@ body:not(.light) [data-pencolor="#1C1508"]:not(.on){border-color:rgba(255,255,25
    column-flex with wrap enabled, a child with 100% along the flex axis
    forces a column break. So the same DOM split (notation tools above the
    pen cluster) becomes left column / right column in vertical mode. */
-body.vertical-tb .outer{flex-direction:row-reverse;align-items:stretch;padding-right:12px;}
+/* Drop .outer's safe-area padding in vertical-tb mode. The padding is
+   asymmetric on iPad (different top/bottom env values) which makes
+   .scroll-area's height differ from .tb's fixed 100vh height — the
+   centered toolbar then appears shifted relative to the centered page.
+   In landscape orientation iPad has no visible notch/inset to dodge,
+   so the padding isn't doing anything useful here anyway. */
+body.vertical-tb .outer{flex-direction:row-reverse;align-items:stretch;padding-right:12px;padding-top:0;padding-bottom:0;}
 body.vertical-tb .tb{flex-direction:column;flex-wrap:wrap;width:auto;min-width:124px;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;padding:6px 4px;gap:3px;align-items:flex-start;align-content:center;justify-content:center;overflow:hidden;border-left:0.5px solid rgba(0,0,0,0.1);box-sizing:border-box;}
 body.vertical-tb .grp{flex-direction:column;min-height:auto;}
 /* Column-item width normalization (see below). The grid toggle's parent
@@ -184,9 +190,9 @@ body.vertical-tb #penCluster{flex-direction:column !important;height:auto !impor
 #restSubMenu .btn{width:100%;justify-content:center;}
 #restBtn{position:relative;}
 #restBtn::after{content:'';position:absolute;bottom:3px;right:3px;border-left:5px solid transparent;border-bottom:5px solid var(--btn-color);opacity:0.35;}
-#utilMenu{display:none;position:fixed;background:color-mix(in srgb, var(--grp-bg) 70%, white);border:1px solid var(--grp-border);border-radius:8px;padding:4px;box-shadow:0 3px 12px rgba(0,0,0,0.4);z-index:9999;flex-direction:column;gap:2px;}
-#utilMenu.show{display:flex;}
-#utilMenu .btn{width:100%;justify-content:flex-start;font-size:13px;padding:5px 12px;white-space:nowrap;}
+#utilMenu, #exportMenu{display:none;position:fixed;background:color-mix(in srgb, var(--grp-bg) 70%, white);border:1px solid var(--grp-border);border-radius:8px;padding:4px;box-shadow:0 3px 12px rgba(0,0,0,0.4);z-index:9999;flex-direction:column;gap:2px;}
+#utilMenu.show, #exportMenu.show{display:flex;}
+#utilMenu .btn, #exportMenu .btn{width:100%;justify-content:flex-start;font-size:13px;padding:5px 12px;white-space:nowrap;}
 #clefMenu{display:none;position:fixed;background:color-mix(in srgb, var(--grp-bg) 70%, white);border:1px solid var(--grp-border);border-radius:8px;padding:4px;box-shadow:0 3px 12px rgba(0,0,0,0.4);z-index:9999;flex-direction:column;gap:2px;}
 #clefMenu.show{display:flex;}
 #clefMenu .btn{width:100%;justify-content:center;}
@@ -299,7 +305,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 #pageDots .pd.bookmarked{background:#E0382B;opacity:0.55;}
 #pageDots .pd.bookmarked.active{opacity:1;}
 @media print{
-  .tb, #tooltip, #confirmDlg, #keySigMenu, #restSubMenu, #textToolbar, #textLabelEditor, #pageNav, #pageNum, #addPage, #addPageMenu, #bookmarkBtn, #bookmarkPopover, #utilMenu, #accMenu, #barlineMenu, #iPhoneUndoPill, #zoomPill, #landscapeBlock, #iphoneSplash, #penSelectMenu, #radialAccMenu, #trebleClefMenu, #bassClefMenu{display:none !important;}
+  .tb, #tooltip, #confirmDlg, #keySigMenu, #restSubMenu, #textToolbar, #textLabelEditor, #pageNav, #pageNum, #addPage, #addPageMenu, #bookmarkBtn, #bookmarkPopover, #utilMenu, #exportMenu, #accMenu, #barlineMenu, #iPhoneUndoPill, #zoomPill, #landscapeBlock, #iphoneSplash, #penSelectMenu, #radialAccMenu, #trebleClefMenu, #bassClefMenu{display:none !important;}
   html,body{height:auto;overflow:visible;background:#fff !important;margin:0;padding:0;}
   .outer{height:auto;width:100%;}
   .scroll-area{overflow:visible !important;height:auto !important;width:100%;}
@@ -360,6 +366,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   #copyBtn{display:none !important;}
   #pasteBtn{display:none !important;}
   #utilBtn{display:none !important;}
+  #exportBtn{display:none !important;}
   #undoBtn{display:none !important;}
   #redoBtn{display:none !important;}
   #clearBtn{display:none !important;}
@@ -450,44 +457,46 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 <body>
 <div id="tooltip"></div>
 <div id="keySigMenu">
-  <button class="btn" data-keysig="1" title="G major">1 ♯</button>
-  <button class="btn" data-keysig="-1" title="F major">1 ♭</button>
-  <button class="btn" data-keysig="2" title="D major">2 ♯</button>
-  <button class="btn" data-keysig="-2" title="B♭ major">2 ♭</button>
-  <button class="btn" data-keysig="3" title="A major">3 ♯</button>
-  <button class="btn" data-keysig="-3" title="E♭ major">3 ♭</button>
-  <button class="btn" data-keysig="4" title="E major">4 ♯</button>
-  <button class="btn" data-keysig="-4" title="A♭ major">4 ♭</button>
-  <button class="btn" data-keysig="5" title="B major">5 ♯</button>
-  <button class="btn" data-keysig="-5" title="D♭ major">5 ♭</button>
-  <button class="btn" data-keysig="6" title="F♯ major">6 ♯</button>
-  <button class="btn" data-keysig="-6" title="G♭ major">6 ♭</button>
-  <button class="btn" data-keysig="7" title="C♯ major">7 ♯</button>
-  <button class="btn" data-keysig="-7" title="C♭ major">7 ♭</button>
+  <button class="btn" data-keysig="1" title="G Major">1 ♯</button>
+  <button class="btn" data-keysig="-1" title="F Major">1 ♭</button>
+  <button class="btn" data-keysig="2" title="D Major">2 ♯</button>
+  <button class="btn" data-keysig="-2" title="B♭ Major">2 ♭</button>
+  <button class="btn" data-keysig="3" title="A Major">3 ♯</button>
+  <button class="btn" data-keysig="-3" title="E♭ Major">3 ♭</button>
+  <button class="btn" data-keysig="4" title="E Major">4 ♯</button>
+  <button class="btn" data-keysig="-4" title="A♭ Major">4 ♭</button>
+  <button class="btn" data-keysig="5" title="B Major">5 ♯</button>
+  <button class="btn" data-keysig="-5" title="D♭ Major">5 ♭</button>
+  <button class="btn" data-keysig="6" title="F♯ Major">6 ♯</button>
+  <button class="btn" data-keysig="-6" title="G♭ Major">6 ♭</button>
+  <button class="btn" data-keysig="7" title="C♯ Major">7 ♯</button>
+  <button class="btn" data-keysig="-7" title="C♭ Major">7 ♭</button>
 </div>
 <div id="restSubMenu">
-  <button class="btn" data-subrest="block" title="whole/half rest"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="3" viewBox="0 0 12 5" style="display:block;"><rect x="0" y="0" width="12" height="5" rx="0.4" fill="#1C1508"/></svg></button>
-  <button class="btn" data-subrest="quarter" title="quarter rest"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="14" viewBox="0 0 3.2 10" style="display:block;"><path fill="#1C1508" d="M 1.325,9.988 C 1.422,9.928 1.410,9.807 1.434,9.711 C 1.434,9.663 1.410,9.614 1.398,9.566 C 1.301,9.145 1.193,8.735 1.096,8.313 C 1.084,8.265 1.084,8.217 1.084,8.181 C 1.084,7.771 1.386,7.277 1.723,7.133 C 1.807,7.084 1.880,7.120 1.964,7.145 C 2.349,7.265 2.554,7.590 2.771,7.892 C 2.831,7.976 2.916,8.084 3.012,8.084 C 3.036,8.084 3.048,8.084 3.072,8.072 C 3.181,8.024 3.229,7.916 3.229,7.807 L 3.217,7.723 C 3.169,7.446 3.120,7.157 2.940,6.940 C 2.578,6.506 2.386,5.976 2.145,5.482 C 2.108,5.410 2.084,5.349 2.084,5.301 C 2.084,5.217 2.133,5.145 2.217,5.060 C 2.434,4.831 2.663,4.627 2.807,4.349 C 2.940,4.133 3.024,3.904 3.024,3.675 C 3.024,3.518 2.988,3.361 2.880,3.193 C 2.518,2.590 2.145,2.000 1.843,1.361 C 1.639,0.928 1.386,0.518 1.024,0.193 C 0.940,0.108 0.831,0.000 0.711,0.000 C 0.663,0.000 0.614,0.012 0.554,0.048 C 0.434,0.120 0.386,0.217 0.386,0.301 C 0.386,0.398 0.434,0.494 0.506,0.590 C 0.880,1.072 1.108,1.639 1.470,2.120 C 1.578,2.253 1.627,2.349 1.627,2.434 C 1.627,2.542 1.530,2.627 1.337,2.747 C 1.084,2.892 0.819,3.036 0.578,3.217 C 0.458,3.301 0.398,3.398 0.398,3.494 C 0.398,3.554 0.422,3.614 0.446,3.675 C 0.566,3.952 0.723,4.205 0.892,4.458 C 1.157,4.831 1.398,5.241 1.590,5.663 C 1.506,5.735 1.434,5.711 1.361,5.723 C 0.542,5.831 0.000,6.446 0.060,7.181 C 0.145,8.060 0.470,8.880 0.867,9.663 C 0.916,9.759 0.976,9.855 1.096,9.892 C 1.169,9.916 1.217,10.000 1.277,10.000 C 1.289,10.000 1.313,10.000 1.325,9.988 Z"/></svg></button>
-  <button class="btn" data-subrest="eighth" title="eighth rest"><svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5.6 10" style="display:block;"><path fill="#1C1508" d="M 2.188,10.000 C 2.534,9.981 2.706,9.770 2.821,9.539 C 3.167,8.906 3.436,8.234 3.685,7.543 C 4.434,5.489 4.779,3.301 5.470,1.209 C 5.509,1.094 5.547,0.960 5.547,0.825 L 5.547,0.729 C 5.528,0.461 5.470,0.288 5.240,0.288 C 5.182,0.288 5.144,0.288 5.086,0.307 C 4.626,0.384 4.203,0.576 3.896,0.864 C 3.417,1.324 2.879,1.670 2.322,2.015 C 2.246,2.054 2.169,2.092 2.092,2.092 C 2.015,2.092 1.939,2.054 1.862,1.977 C 1.785,1.900 1.747,1.804 1.747,1.727 C 1.747,1.651 1.766,1.593 1.804,1.516 C 1.881,1.382 1.958,1.209 1.958,1.036 C 1.958,0.710 2.054,0.288 1.689,0.115 C 1.516,0.038 1.363,0.000 1.248,0.000 C 0.998,0.000 0.845,0.173 0.633,0.537 C 0.269,1.171 0.154,1.881 0.038,2.591 C 0.019,2.745 0.000,2.879 0.000,3.013 C 0.000,3.896 0.461,4.683 1.459,4.683 C 1.689,4.683 1.977,4.645 2.284,4.530 C 2.841,4.319 3.301,4.012 3.858,3.666 C 3.417,5.835 2.572,7.850 2.188,10.000 Z"/></svg></button>
-  <button class="btn" data-subrest="sixteenth" title="sixteenth rest"><svg xmlns="http://www.w3.org/2000/svg" width="5" height="10" viewBox="0 0 5.8 10" style="display:block;"><path fill="#1C1508" d="M 2.522,9.930 C 2.678,10.000 2.852,9.896 2.974,9.774 C 3.374,9.374 3.617,8.887 3.704,8.330 C 3.774,7.878 3.826,7.409 3.913,6.974 C 4.226,5.374 4.661,3.826 5.165,2.296 C 5.374,1.652 5.791,1.113 5.791,0.400 C 5.791,0.243 5.757,0.122 5.635,0.052 C 5.565,0.017 5.478,0.000 5.374,0.000 C 5.217,0.000 5.061,0.052 4.922,0.174 C 4.887,0.191 4.870,0.209 4.852,0.226 C 4.157,0.696 3.548,1.287 2.696,1.652 C 2.765,1.426 2.835,1.270 2.852,1.113 C 2.870,1.043 2.870,0.974 2.870,0.904 C 2.870,0.591 2.730,0.209 2.557,0.157 C 2.487,0.139 2.400,0.122 2.330,0.122 C 1.878,0.122 1.252,0.417 1.043,0.748 C 0.800,1.165 0.713,1.617 0.713,2.070 C 0.713,3.322 1.113,3.913 1.878,3.913 C 2.157,3.913 2.470,3.826 2.852,3.687 C 3.270,3.530 3.600,3.252 4.087,3.026 C 3.774,3.652 3.652,4.243 3.496,4.835 C 3.339,5.443 2.835,5.530 2.365,5.722 C 2.261,5.774 2.122,5.774 2.122,5.617 L 2.122,5.583 C 2.139,5.304 1.983,5.113 1.896,4.887 C 1.704,4.330 1.217,4.435 0.835,4.348 C 0.522,4.278 0.348,4.574 0.209,4.817 C 0.052,5.130 0.000,5.443 0.000,5.774 C 0.000,6.017 0.017,6.261 0.070,6.487 C 0.209,7.409 0.452,7.791 0.991,7.791 C 1.235,7.791 1.548,7.739 1.930,7.583 C 2.191,7.478 2.452,7.374 2.643,7.165 C 2.696,7.096 2.765,7.026 2.852,7.026 C 2.887,7.026 2.904,7.026 2.939,7.043 C 2.991,7.217 2.887,7.391 2.835,7.565 C 2.661,8.278 2.435,9.009 2.435,9.757 C 2.435,9.826 2.452,9.896 2.522,9.930 Z"/></svg></button>
-  <button class="btn" data-subrest="thirtysecond" title="thirty-second rest"><svg xmlns="http://www.w3.org/2000/svg" width="5" height="14" viewBox="0 0 3.6 10" style="display:block;"><path fill="#1C1508" d="M 1.251,9.969 C 1.373,10.000 1.475,9.888 1.536,9.786 C 1.587,9.715 1.628,9.634 1.648,9.542 C 1.790,8.922 1.943,8.301 2.065,7.670 C 2.208,6.857 2.370,6.053 2.553,5.249 C 2.777,4.191 2.981,3.133 3.194,2.085 C 3.296,1.546 3.408,1.007 3.510,0.468 C 3.520,0.427 3.530,0.387 3.530,0.346 C 3.530,0.214 3.479,0.081 3.388,0.031 C 3.357,0.010 3.316,0.000 3.276,0.000 C 3.164,0.000 3.042,0.071 2.950,0.153 L 2.553,0.488 C 2.492,0.549 2.421,0.590 2.350,0.600 C 2.299,0.600 2.238,0.560 2.177,0.468 C 2.065,0.315 1.872,0.244 1.689,0.203 C 1.607,0.193 1.526,0.183 1.445,0.183 C 0.997,0.183 0.671,0.478 0.610,0.966 C 0.610,1.017 0.600,1.068 0.600,1.119 C 0.600,1.414 0.671,1.699 0.753,1.974 C 0.804,2.167 0.946,2.289 1.139,2.289 C 1.170,2.289 1.200,2.289 1.231,2.279 C 1.353,2.269 1.475,2.248 1.597,2.208 C 2.014,2.075 2.330,1.780 2.737,1.536 C 2.675,1.780 2.574,1.984 2.574,2.187 C 2.574,2.635 2.258,2.808 1.953,3.001 C 1.923,3.021 1.892,3.032 1.872,3.032 C 1.841,3.032 1.811,3.011 1.780,2.960 C 1.617,2.716 1.312,2.564 1.007,2.564 C 0.916,2.564 0.834,2.584 0.753,2.604 C 0.437,2.696 0.326,2.859 0.305,3.194 C 0.305,3.428 0.366,3.652 0.407,3.886 C 0.478,4.262 0.702,4.466 1.058,4.466 C 1.506,4.466 1.831,4.222 2.228,3.978 C 2.096,4.466 1.984,4.883 1.882,5.320 C 1.831,5.554 1.628,5.595 1.465,5.626 C 1.312,5.666 1.404,5.443 1.312,5.381 C 1.282,5.361 1.292,5.300 1.272,5.270 C 1.129,5.076 0.956,4.934 0.712,4.934 C 0.417,4.934 0.142,5.137 0.061,5.381 C 0.020,5.504 0.000,5.626 0.000,5.748 C 0.000,5.931 0.041,6.114 0.071,6.297 C 0.142,6.724 0.366,6.938 0.732,6.938 C 0.804,6.938 0.885,6.938 0.966,6.907 C 1.068,6.897 1.211,6.816 1.302,6.816 C 1.343,6.816 1.363,6.826 1.384,6.857 C 1.394,6.877 1.404,6.907 1.404,6.938 C 1.404,7.060 1.333,7.213 1.302,7.335 C 1.302,7.355 1.292,7.365 1.282,7.375 C 1.119,7.945 0.926,8.505 0.946,9.115 C 0.946,9.318 1.058,9.491 1.099,9.695 C 1.119,9.807 1.129,9.949 1.251,9.969 Z"/></svg></button>
+  <button class="btn" data-subrest="block" title="Whole/Half Rest"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="3" viewBox="0 0 12 5" style="display:block;"><rect x="0" y="0" width="12" height="5" rx="0.4" fill="#1C1508"/></svg></button>
+  <button class="btn" data-subrest="quarter" title="Quarter Rest"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="14" viewBox="0 0 3.2 10" style="display:block;"><path fill="#1C1508" d="M 1.325,9.988 C 1.422,9.928 1.410,9.807 1.434,9.711 C 1.434,9.663 1.410,9.614 1.398,9.566 C 1.301,9.145 1.193,8.735 1.096,8.313 C 1.084,8.265 1.084,8.217 1.084,8.181 C 1.084,7.771 1.386,7.277 1.723,7.133 C 1.807,7.084 1.880,7.120 1.964,7.145 C 2.349,7.265 2.554,7.590 2.771,7.892 C 2.831,7.976 2.916,8.084 3.012,8.084 C 3.036,8.084 3.048,8.084 3.072,8.072 C 3.181,8.024 3.229,7.916 3.229,7.807 L 3.217,7.723 C 3.169,7.446 3.120,7.157 2.940,6.940 C 2.578,6.506 2.386,5.976 2.145,5.482 C 2.108,5.410 2.084,5.349 2.084,5.301 C 2.084,5.217 2.133,5.145 2.217,5.060 C 2.434,4.831 2.663,4.627 2.807,4.349 C 2.940,4.133 3.024,3.904 3.024,3.675 C 3.024,3.518 2.988,3.361 2.880,3.193 C 2.518,2.590 2.145,2.000 1.843,1.361 C 1.639,0.928 1.386,0.518 1.024,0.193 C 0.940,0.108 0.831,0.000 0.711,0.000 C 0.663,0.000 0.614,0.012 0.554,0.048 C 0.434,0.120 0.386,0.217 0.386,0.301 C 0.386,0.398 0.434,0.494 0.506,0.590 C 0.880,1.072 1.108,1.639 1.470,2.120 C 1.578,2.253 1.627,2.349 1.627,2.434 C 1.627,2.542 1.530,2.627 1.337,2.747 C 1.084,2.892 0.819,3.036 0.578,3.217 C 0.458,3.301 0.398,3.398 0.398,3.494 C 0.398,3.554 0.422,3.614 0.446,3.675 C 0.566,3.952 0.723,4.205 0.892,4.458 C 1.157,4.831 1.398,5.241 1.590,5.663 C 1.506,5.735 1.434,5.711 1.361,5.723 C 0.542,5.831 0.000,6.446 0.060,7.181 C 0.145,8.060 0.470,8.880 0.867,9.663 C 0.916,9.759 0.976,9.855 1.096,9.892 C 1.169,9.916 1.217,10.000 1.277,10.000 C 1.289,10.000 1.313,10.000 1.325,9.988 Z"/></svg></button>
+  <button class="btn" data-subrest="eighth" title="Eighth Rest"><svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5.6 10" style="display:block;"><path fill="#1C1508" d="M 2.188,10.000 C 2.534,9.981 2.706,9.770 2.821,9.539 C 3.167,8.906 3.436,8.234 3.685,7.543 C 4.434,5.489 4.779,3.301 5.470,1.209 C 5.509,1.094 5.547,0.960 5.547,0.825 L 5.547,0.729 C 5.528,0.461 5.470,0.288 5.240,0.288 C 5.182,0.288 5.144,0.288 5.086,0.307 C 4.626,0.384 4.203,0.576 3.896,0.864 C 3.417,1.324 2.879,1.670 2.322,2.015 C 2.246,2.054 2.169,2.092 2.092,2.092 C 2.015,2.092 1.939,2.054 1.862,1.977 C 1.785,1.900 1.747,1.804 1.747,1.727 C 1.747,1.651 1.766,1.593 1.804,1.516 C 1.881,1.382 1.958,1.209 1.958,1.036 C 1.958,0.710 2.054,0.288 1.689,0.115 C 1.516,0.038 1.363,0.000 1.248,0.000 C 0.998,0.000 0.845,0.173 0.633,0.537 C 0.269,1.171 0.154,1.881 0.038,2.591 C 0.019,2.745 0.000,2.879 0.000,3.013 C 0.000,3.896 0.461,4.683 1.459,4.683 C 1.689,4.683 1.977,4.645 2.284,4.530 C 2.841,4.319 3.301,4.012 3.858,3.666 C 3.417,5.835 2.572,7.850 2.188,10.000 Z"/></svg></button>
+  <button class="btn" data-subrest="sixteenth" title="Sixteenth Rest"><svg xmlns="http://www.w3.org/2000/svg" width="5" height="10" viewBox="0 0 5.8 10" style="display:block;"><path fill="#1C1508" d="M 2.522,9.930 C 2.678,10.000 2.852,9.896 2.974,9.774 C 3.374,9.374 3.617,8.887 3.704,8.330 C 3.774,7.878 3.826,7.409 3.913,6.974 C 4.226,5.374 4.661,3.826 5.165,2.296 C 5.374,1.652 5.791,1.113 5.791,0.400 C 5.791,0.243 5.757,0.122 5.635,0.052 C 5.565,0.017 5.478,0.000 5.374,0.000 C 5.217,0.000 5.061,0.052 4.922,0.174 C 4.887,0.191 4.870,0.209 4.852,0.226 C 4.157,0.696 3.548,1.287 2.696,1.652 C 2.765,1.426 2.835,1.270 2.852,1.113 C 2.870,1.043 2.870,0.974 2.870,0.904 C 2.870,0.591 2.730,0.209 2.557,0.157 C 2.487,0.139 2.400,0.122 2.330,0.122 C 1.878,0.122 1.252,0.417 1.043,0.748 C 0.800,1.165 0.713,1.617 0.713,2.070 C 0.713,3.322 1.113,3.913 1.878,3.913 C 2.157,3.913 2.470,3.826 2.852,3.687 C 3.270,3.530 3.600,3.252 4.087,3.026 C 3.774,3.652 3.652,4.243 3.496,4.835 C 3.339,5.443 2.835,5.530 2.365,5.722 C 2.261,5.774 2.122,5.774 2.122,5.617 L 2.122,5.583 C 2.139,5.304 1.983,5.113 1.896,4.887 C 1.704,4.330 1.217,4.435 0.835,4.348 C 0.522,4.278 0.348,4.574 0.209,4.817 C 0.052,5.130 0.000,5.443 0.000,5.774 C 0.000,6.017 0.017,6.261 0.070,6.487 C 0.209,7.409 0.452,7.791 0.991,7.791 C 1.235,7.791 1.548,7.739 1.930,7.583 C 2.191,7.478 2.452,7.374 2.643,7.165 C 2.696,7.096 2.765,7.026 2.852,7.026 C 2.887,7.026 2.904,7.026 2.939,7.043 C 2.991,7.217 2.887,7.391 2.835,7.565 C 2.661,8.278 2.435,9.009 2.435,9.757 C 2.435,9.826 2.452,9.896 2.522,9.930 Z"/></svg></button>
+  <button class="btn" data-subrest="thirtysecond" title="Thirty-Second Rest"><svg xmlns="http://www.w3.org/2000/svg" width="5" height="14" viewBox="0 0 3.6 10" style="display:block;"><path fill="#1C1508" d="M 1.251,9.969 C 1.373,10.000 1.475,9.888 1.536,9.786 C 1.587,9.715 1.628,9.634 1.648,9.542 C 1.790,8.922 1.943,8.301 2.065,7.670 C 2.208,6.857 2.370,6.053 2.553,5.249 C 2.777,4.191 2.981,3.133 3.194,2.085 C 3.296,1.546 3.408,1.007 3.510,0.468 C 3.520,0.427 3.530,0.387 3.530,0.346 C 3.530,0.214 3.479,0.081 3.388,0.031 C 3.357,0.010 3.316,0.000 3.276,0.000 C 3.164,0.000 3.042,0.071 2.950,0.153 L 2.553,0.488 C 2.492,0.549 2.421,0.590 2.350,0.600 C 2.299,0.600 2.238,0.560 2.177,0.468 C 2.065,0.315 1.872,0.244 1.689,0.203 C 1.607,0.193 1.526,0.183 1.445,0.183 C 0.997,0.183 0.671,0.478 0.610,0.966 C 0.610,1.017 0.600,1.068 0.600,1.119 C 0.600,1.414 0.671,1.699 0.753,1.974 C 0.804,2.167 0.946,2.289 1.139,2.289 C 1.170,2.289 1.200,2.289 1.231,2.279 C 1.353,2.269 1.475,2.248 1.597,2.208 C 2.014,2.075 2.330,1.780 2.737,1.536 C 2.675,1.780 2.574,1.984 2.574,2.187 C 2.574,2.635 2.258,2.808 1.953,3.001 C 1.923,3.021 1.892,3.032 1.872,3.032 C 1.841,3.032 1.811,3.011 1.780,2.960 C 1.617,2.716 1.312,2.564 1.007,2.564 C 0.916,2.564 0.834,2.584 0.753,2.604 C 0.437,2.696 0.326,2.859 0.305,3.194 C 0.305,3.428 0.366,3.652 0.407,3.886 C 0.478,4.262 0.702,4.466 1.058,4.466 C 1.506,4.466 1.831,4.222 2.228,3.978 C 2.096,4.466 1.984,4.883 1.882,5.320 C 1.831,5.554 1.628,5.595 1.465,5.626 C 1.312,5.666 1.404,5.443 1.312,5.381 C 1.282,5.361 1.292,5.300 1.272,5.270 C 1.129,5.076 0.956,4.934 0.712,4.934 C 0.417,4.934 0.142,5.137 0.061,5.381 C 0.020,5.504 0.000,5.626 0.000,5.748 C 0.000,5.931 0.041,6.114 0.071,6.297 C 0.142,6.724 0.366,6.938 0.732,6.938 C 0.804,6.938 0.885,6.938 0.966,6.907 C 1.068,6.897 1.211,6.816 1.302,6.816 C 1.343,6.816 1.363,6.826 1.384,6.857 C 1.394,6.877 1.404,6.907 1.404,6.938 C 1.404,7.060 1.333,7.213 1.302,7.335 C 1.302,7.355 1.292,7.365 1.282,7.375 C 1.119,7.945 0.926,8.505 0.946,9.115 C 0.946,9.318 1.058,9.491 1.099,9.695 C 1.119,9.807 1.129,9.949 1.251,9.969 Z"/></svg></button>
 </div>
 <div id="utilMenu" role="menu" aria-label="Notebook and settings menu">
-  <button class="btn" id="printBtn" aria-label="Print or save as PDF"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Print / PDF</button>
-  <button class="btn" id="pngBtn" aria-label="Export as PNG"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Export PNG</button>
-  <button class="btn" id="midiBtn" aria-label="Export selection as MIDI"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Export MIDI Snippet</button>
-  <button class="btn" id="saveBtn" aria-label="Download notebook"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Notebook</button>
-  <button class="btn" id="loadBtn" aria-label="Open notebook"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 11 15 14"/></svg>Open Notebook</button>
-  <hr style="border:none;border-top:0.5px solid var(--grp-border);margin:2px 0;">
   <button class="btn" id="themeBtn" aria-label="Toggle light and dark mode"><svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Light / Dark</button>
   <button class="btn" id="watermarkBtn" aria-label="Toggle watermark"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span id="watermarkLabel">Watermark: On</span></button>
   <button class="btn" id="accCarryBtn" aria-label="Toggle accidental carry-over"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><line x1="22" y1="6" x2="2" y2="6"/><line x1="22" y1="18" x2="2" y2="18"/><line x1="6" y1="2" x2="6" y2="22"/><line x1="18" y1="2" x2="18" y2="22"/></svg><span id="accCarryLabel">Accidentals Carry: On</span></button>
   <hr style="border:none;border-top:0.5px solid var(--grp-border);margin:2px 0;">
   <button class="btn" id="aboutBtn" aria-label="About Music Notebook"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><strong>About</strong></button>
 </div>
+<div id="exportMenu" role="menu" aria-label="Export and file menu">
+  <button class="btn" id="printBtn" aria-label="Print or save as PDF"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Print / PDF</button>
+  <button class="btn" id="pngBtn" aria-label="Export as PNG"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Export PNG</button>
+  <button class="btn" id="midiBtn" aria-label="Export selection as MIDI"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Export MIDI Snippet</button>
+  <hr style="border:none;border-top:0.5px solid var(--grp-border);margin:2px 0;">
+  <button class="btn" id="saveBtn" aria-label="Download notebook"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Notebook</button>
+  <button class="btn" id="loadBtn" aria-label="Open notebook"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 11 15 14"/></svg>Open Notebook</button>
+</div>
 <div id="barlineMenu">
-  <button class="btn" data-subbarline="barline" title="bar line"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="6.4" y="4.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="7.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="10.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="13.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="16.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="13.6" y="4.8" width="0.7" height="12.5" fill="#1C1508"/></svg></button>
-  <button class="btn" data-subbarline="barline-final" title="end bar line"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="3.5" y="4.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="7.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="10.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="13.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="16.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="10.8" y="4.8" width="0.7" height="12.5" fill="#1C1508"/><rect x="12.5" y="4.8" width="2.2" height="12.5" fill="#1C1508"/></svg></button>
+  <button class="btn" data-subbarline="barline" title="Bar Line"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="6.4" y="4.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="7.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="10.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="13.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="16.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="13.6" y="4.8" width="0.7" height="12.5" fill="#1C1508"/></svg></button>
+  <button class="btn" data-subbarline="barline-final" title="End Bar Line"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="3.5" y="4.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="7.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="10.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="13.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="3.5" y="16.8" width="11.2" height="0.5" fill="#1C1508"/><rect x="10.8" y="4.8" width="0.7" height="12.5" fill="#1C1508"/><rect x="12.5" y="4.8" width="2.2" height="12.5" fill="#1C1508"/></svg></button>
 </div>
 <div id="confirmDlg"><div class="dlg"><div id="confirmMsg">Delete everything?</div><div class="dlg-btns"><button class="dlg-btn" id="confirmNo">Cancel</button><button class="dlg-btn danger" id="confirmYes">Delete</button></div></div></div>
 <div id="noteNamePopup" style="display:none;"></div>
@@ -501,11 +510,11 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
 </div>
 <div id="landscapeBlock" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg><span>Please rotate to portrait</span></div>
 <div id="iPhoneUndoPill" style="display:none;">
-  <button id="iPhoneUndo" title="undo"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
-  <button id="iPhoneRedo" title="redo"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
-  <button id="iPhoneClear" title="clear page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <button id="iPhoneUndo" title="Undo"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
+  <button id="iPhoneRedo" title="Redo"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
+  <button id="iPhoneClear" title="Clear Page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   <span style="width:0.5px;height:20px;background:rgba(248,243,231,0.2);flex-shrink:0;"></span>
-  <button id="iPhoneShare" title="share"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
+  <button id="iPhoneShare" title="Share"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8F3E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
 </div>
 <div id="zoomPill" style="display:none;position:fixed;z-index:9998;top:130px;left:50%;transform:translateX(-50%);
   background:rgba(28,21,8,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -519,40 +528,40 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   <!-- Row 1: notation tools -->
 
   <div class="grp">
-    <button class="btn btn-circle" data-head="open" title="white notehead"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><ellipse cx="10" cy="10" rx="4.61" ry="2.72" transform="rotate(-15,10,10)" fill="none" stroke="#1C1508" stroke-width="1.41"/></svg></button>
-    <button class="btn btn-circle on" data-head="filled" title="black notehead"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><ellipse cx="10" cy="10" rx="5.32" ry="3.43" transform="rotate(-15,10,10)" fill="#1C1508"/></svg></button>
+    <button class="btn btn-circle" data-head="open" title="White Notehead"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><ellipse cx="10" cy="10" rx="4.61" ry="2.72" transform="rotate(-15,10,10)" fill="none" stroke="#1C1508" stroke-width="1.41"/></svg></button>
+    <button class="btn btn-circle on" data-head="filled" title="Black Notehead"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><ellipse cx="10" cy="10" rx="5.32" ry="3.43" transform="rotate(-15,10,10)" fill="#1C1508"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp iphone-acc-group" style="display:none;">
-    <button class="btn" id="accBtnPhone" data-acc="sharp" style="padding:2px 2px;position:relative;" title="accidental"><svg id="accBtnPhoneIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="5.20 1.00 9.60 18.00" style="display:block;"><path fill="#1C1508" d="M9.08,18.00 C9.25,17.98 9.29,17.75 9.33,17.60 C9.42,17.33 9.44,17.06 9.44,16.81 C9.44,16.58 9.42,16.37 9.42,16.14 C9.42,16.00 9.42,15.81 9.44,15.66 C9.48,15.25 9.52,14.83 9.54,14.41 L10.46,14.22 C10.50,15.10 10.67,15.96 10.96,16.79 C10.98,16.89 11.06,17.02 11.19,17.02 C11.31,17.04 11.36,16.89 11.42,16.79 C11.56,16.56 11.59,16.29 11.59,16.04 C11.61,15.85 11.61,15.68 11.61,15.52 C11.61,15.02 11.56,14.50 11.54,14.00 L12.75,13.74 C13.90,13.52 14.05,13.35 14.13,12.24 C14.13,11.97 14.15,11.78 14.13,11.57 C14.11,11.30 14.00,11.12 13.78,11.12 L13.73,11.12 C13.65,11.12 13.59,11.12 13.50,11.14 C13.02,11.26 12.50,11.37 12.00,11.45 L11.65,11.51 C11.67,11.22 11.67,10.91 11.69,10.60 C11.71,9.93 11.73,9.26 11.73,8.59 C12.32,8.45 12.88,8.28 13.44,8.09 C13.76,7.99 14.03,7.82 14.11,7.49 C14.19,7.11 14.30,6.76 14.30,6.38 C14.30,6.17 14.28,5.94 14.19,5.73 C14.11,5.52 14.05,5.42 13.92,5.42 L13.88,5.42 C13.82,5.42 13.73,5.42 13.65,5.46 C13.00,5.73 12.36,5.94 11.69,6.13 L11.63,5.00 C11.59,4.11 11.54,3.19 11.36,2.29 C11.31,2.19 11.33,2.00 11.21,2.00 L11.13,2.00 C10.96,2.04 10.75,2.10 10.73,2.33 L10.73,2.73 C10.73,3.96 10.77,5.17 10.79,6.38 L9.69,6.63 C9.69,6.00 9.67,5.38 9.62,4.75 C9.60,4.44 9.60,4.15 9.44,3.84 C8.98,4.07 9.04,4.46 9.04,4.80 C9.00,5.46 8.98,6.11 8.96,6.76 C8.37,6.88 7.79,6.96 7.20,7.07 C6.35,7.21 6.22,7.34 6.22,8.28 C6.16,8.51 6.33,8.78 6.31,9.03 C6.27,9.43 6.37,9.55 6.64,9.57 C6.70,9.57 6.77,9.55 6.85,9.53 C7.54,9.43 8.21,9.32 8.87,9.20 L8.81,11.07 C8.79,11.43 8.75,11.76 8.71,12.10 C7.93,12.24 7.16,12.39 6.39,12.58 C5.95,12.68 5.70,12.85 5.70,13.35 C5.70,13.85 5.89,14.31 5.91,14.79 C5.91,15.02 5.97,15.12 6.14,15.14 C6.18,15.14 6.24,15.12 6.33,15.10 C7.08,14.93 7.83,14.79 8.58,14.62 C8.56,14.89 8.56,15.16 8.56,15.45 C8.56,16.19 8.64,16.89 8.89,17.60 C8.94,17.75 8.89,18.00 9.08,18.00 Z M9.64,11.91 C9.67,11.45 9.67,10.99 9.69,10.53 C9.71,10.03 9.71,9.55 9.71,9.05 C10.06,8.99 10.40,8.93 10.73,8.84 C10.63,9.80 10.58,10.76 10.52,11.72 Z"/></svg></button>
+    <button class="btn" id="accBtnPhone" data-acc="sharp" style="padding:2px 2px;position:relative;" title="Accidental"><svg id="accBtnPhoneIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="5.20 1.00 9.60 18.00" style="display:block;"><path fill="#1C1508" d="M9.08,18.00 C9.25,17.98 9.29,17.75 9.33,17.60 C9.42,17.33 9.44,17.06 9.44,16.81 C9.44,16.58 9.42,16.37 9.42,16.14 C9.42,16.00 9.42,15.81 9.44,15.66 C9.48,15.25 9.52,14.83 9.54,14.41 L10.46,14.22 C10.50,15.10 10.67,15.96 10.96,16.79 C10.98,16.89 11.06,17.02 11.19,17.02 C11.31,17.04 11.36,16.89 11.42,16.79 C11.56,16.56 11.59,16.29 11.59,16.04 C11.61,15.85 11.61,15.68 11.61,15.52 C11.61,15.02 11.56,14.50 11.54,14.00 L12.75,13.74 C13.90,13.52 14.05,13.35 14.13,12.24 C14.13,11.97 14.15,11.78 14.13,11.57 C14.11,11.30 14.00,11.12 13.78,11.12 L13.73,11.12 C13.65,11.12 13.59,11.12 13.50,11.14 C13.02,11.26 12.50,11.37 12.00,11.45 L11.65,11.51 C11.67,11.22 11.67,10.91 11.69,10.60 C11.71,9.93 11.73,9.26 11.73,8.59 C12.32,8.45 12.88,8.28 13.44,8.09 C13.76,7.99 14.03,7.82 14.11,7.49 C14.19,7.11 14.30,6.76 14.30,6.38 C14.30,6.17 14.28,5.94 14.19,5.73 C14.11,5.52 14.05,5.42 13.92,5.42 L13.88,5.42 C13.82,5.42 13.73,5.42 13.65,5.46 C13.00,5.73 12.36,5.94 11.69,6.13 L11.63,5.00 C11.59,4.11 11.54,3.19 11.36,2.29 C11.31,2.19 11.33,2.00 11.21,2.00 L11.13,2.00 C10.96,2.04 10.75,2.10 10.73,2.33 L10.73,2.73 C10.73,3.96 10.77,5.17 10.79,6.38 L9.69,6.63 C9.69,6.00 9.67,5.38 9.62,4.75 C9.60,4.44 9.60,4.15 9.44,3.84 C8.98,4.07 9.04,4.46 9.04,4.80 C9.00,5.46 8.98,6.11 8.96,6.76 C8.37,6.88 7.79,6.96 7.20,7.07 C6.35,7.21 6.22,7.34 6.22,8.28 C6.16,8.51 6.33,8.78 6.31,9.03 C6.27,9.43 6.37,9.55 6.64,9.57 C6.70,9.57 6.77,9.55 6.85,9.53 C7.54,9.43 8.21,9.32 8.87,9.20 L8.81,11.07 C8.79,11.43 8.75,11.76 8.71,12.10 C7.93,12.24 7.16,12.39 6.39,12.58 C5.95,12.68 5.70,12.85 5.70,13.35 C5.70,13.85 5.89,14.31 5.91,14.79 C5.91,15.02 5.97,15.12 6.14,15.14 C6.18,15.14 6.24,15.12 6.33,15.10 C7.08,14.93 7.83,14.79 8.58,14.62 C8.56,14.89 8.56,15.16 8.56,15.45 C8.56,16.19 8.64,16.89 8.89,17.60 C8.94,17.75 8.89,18.00 9.08,18.00 Z M9.64,11.91 C9.67,11.45 9.67,10.99 9.69,10.53 C9.71,10.03 9.71,9.55 9.71,9.05 C10.06,8.99 10.40,8.93 10.73,8.84 C10.63,9.80 10.58,10.76 10.52,11.72 Z"/></svg></button>
   </div>
   <div class="grp desktop-acc-group">
-    <button class="btn" data-acc="natural" style="padding:2px 2px;" title="natural"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0.50 0.50 5.22 19.00" style="display:block;"><path fill="#1C1508" d="M4.47,19.00 C4.69,19.00 4.75,18.73 4.82,18.55 C4.84,18.43 4.88,18.33 4.88,18.22 C4.88,16.77 4.98,15.33 4.98,13.86 C4.98,13.33 4.94,12.78 4.94,12.26 C4.94,10.94 5.04,9.63 5.08,8.32 C5.08,8.32 5.12,8.02 5.14,7.77 L5.14,7.71 L5.16,7.47 L5.16,7.35 L5.18,7.00 C5.18,6.94 5.22,6.71 5.14,6.53 C5.04,6.33 5.12,5.90 4.71,6.00 C3.78,6.26 2.82,6.35 1.86,6.43 C1.92,5.31 1.98,4.18 1.98,3.06 C1.98,2.69 1.98,2.33 1.96,1.96 C1.96,1.63 1.90,1.32 1.77,1.00 C1.29,1.14 1.24,1.49 1.24,1.82 C1.24,3.94 1.10,6.00 1.04,8.10 C1.02,8.79 1.00,9.47 1.00,10.16 C1.00,10.75 1.02,11.31 1.04,11.88 C1.06,12.28 1.10,12.67 1.10,13.04 C1.10,13.37 1.24,13.47 1.47,13.47 C1.53,13.47 1.59,13.47 1.67,13.45 L4.04,13.10 L4.14,13.08 L4.14,14.94 C4.14,15.65 4.04,16.37 4.04,17.08 C4.04,17.55 4.08,18.02 4.21,18.49 C4.27,18.69 4.21,19.00 4.47,19.00 Z M1.78,11.16 L1.78,10.92 C1.77,10.26 1.73,9.61 1.75,8.96 L1.77,8.71 C1.88,8.71 2.02,8.73 2.16,8.71 C2.82,8.65 3.49,8.61 4.16,8.59 L4.27,8.57 L4.21,9.16 C4.20,9.67 4.16,10.20 4.16,10.71 C3.37,10.92 2.57,11.06 1.78,11.16 Z"/></svg></button>
-    <button class="btn" data-acc="sharp" style="padding:2px 2px;" title="sharp"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="5.20 1.00 9.60 18.00" style="display:block;"><path fill="#1C1508" d="M9.08,18.00 C9.25,17.98 9.29,17.75 9.33,17.60 C9.42,17.33 9.44,17.06 9.44,16.81 C9.44,16.58 9.42,16.37 9.42,16.14 C9.42,16.00 9.42,15.81 9.44,15.66 C9.48,15.25 9.52,14.83 9.54,14.41 L10.46,14.22 C10.50,15.10 10.67,15.96 10.96,16.79 C10.98,16.89 11.06,17.02 11.19,17.02 C11.31,17.04 11.36,16.89 11.42,16.79 C11.56,16.56 11.59,16.29 11.59,16.04 C11.61,15.85 11.61,15.68 11.61,15.52 C11.61,15.02 11.56,14.50 11.54,14.00 L12.75,13.74 C13.90,13.52 14.05,13.35 14.13,12.24 C14.13,11.97 14.15,11.78 14.13,11.57 C14.11,11.30 14.00,11.12 13.78,11.12 L13.73,11.12 C13.65,11.12 13.59,11.12 13.50,11.14 C13.02,11.26 12.50,11.37 12.00,11.45 L11.65,11.51 C11.67,11.22 11.67,10.91 11.69,10.60 C11.71,9.93 11.73,9.26 11.73,8.59 C12.32,8.45 12.88,8.28 13.44,8.09 C13.76,7.99 14.03,7.82 14.11,7.49 C14.19,7.11 14.30,6.76 14.30,6.38 C14.30,6.17 14.28,5.94 14.19,5.73 C14.11,5.52 14.05,5.42 13.92,5.42 L13.88,5.42 C13.82,5.42 13.73,5.42 13.65,5.46 C13.00,5.73 12.36,5.94 11.69,6.13 L11.63,5.00 C11.59,4.11 11.54,3.19 11.36,2.29 C11.31,2.19 11.33,2.00 11.21,2.00 L11.13,2.00 C10.96,2.04 10.75,2.10 10.73,2.33 L10.73,2.73 C10.73,3.96 10.77,5.17 10.79,6.38 L9.69,6.63 C9.69,6.00 9.67,5.38 9.62,4.75 C9.60,4.44 9.60,4.15 9.44,3.84 C8.98,4.07 9.04,4.46 9.04,4.80 C9.00,5.46 8.98,6.11 8.96,6.76 C8.37,6.88 7.79,6.96 7.20,7.07 C6.35,7.21 6.22,7.34 6.22,8.28 C6.16,8.51 6.33,8.78 6.31,9.03 C6.27,9.43 6.37,9.55 6.64,9.57 C6.70,9.57 6.77,9.55 6.85,9.53 C7.54,9.43 8.21,9.32 8.87,9.20 L8.81,11.07 C8.79,11.43 8.75,11.76 8.71,12.10 C7.93,12.24 7.16,12.39 6.39,12.58 C5.95,12.68 5.70,12.85 5.70,13.35 C5.70,13.85 5.89,14.31 5.91,14.79 C5.91,15.02 5.97,15.12 6.14,15.14 C6.18,15.14 6.24,15.12 6.33,15.10 C7.08,14.93 7.83,14.79 8.58,14.62 C8.56,14.89 8.56,15.16 8.56,15.45 C8.56,16.19 8.64,16.89 8.89,17.60 C8.94,17.75 8.89,18.00 9.08,18.00 Z M9.64,11.91 C9.67,11.45 9.67,10.99 9.69,10.53 C9.71,10.03 9.71,9.55 9.71,9.05 C10.06,8.99 10.40,8.93 10.73,8.84 C10.63,9.80 10.58,10.76 10.52,11.72 Z"/></svg></button>
-    <button class="btn" data-acc="flat" style="padding:2px 2px;" title="flat"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="7.28 -0.11 5.58 18.00" style="display:block;"><path fill="#1C1508" d="M8.19,16.39 C8.26,16.39 8.35,16.34 8.46,16.23 C8.75,15.99 9.08,15.75 9.39,15.53 C11.33,14.14 12.36,12.26 12.36,9.86 C12.36,9.55 12.36,9.26 12.32,8.95 C12.21,7.87 11.59,7.26 10.66,7.26 C10.47,7.26 10.25,7.30 10.00,7.37 C9.69,7.45 9.39,7.61 9.08,7.74 L9.05,7.76 L9.05,7.19 C9.08,6.35 9.10,5.51 9.14,4.67 C9.14,4.19 9.19,3.73 9.19,3.24 C9.19,2.78 9.14,2.29 9.03,1.83 C8.99,1.67 8.99,1.39 8.77,1.39 L8.75,1.39 C8.50,1.41 8.33,1.61 8.33,1.92 C8.30,2.54 8.24,3.17 8.26,3.79 L8.26,4.48 C8.26,5.78 8.19,7.08 8.15,8.38 C8.08,10.26 7.80,12.09 7.78,13.96 C7.78,14.69 7.82,15.46 8.02,16.19 C8.06,16.32 8.11,16.39 8.19,16.39 Z M8.79,13.41 C8.83,12.84 8.86,12.24 8.92,11.62 C8.97,11.14 8.99,10.65 8.99,10.17 L9.08,10.12 C9.50,9.95 9.91,9.73 10.38,9.73 C10.53,9.73 10.71,9.77 10.89,9.84 C11.24,9.97 11.41,10.14 11.39,10.39 C11.39,10.52 11.37,10.65 11.28,10.83 C10.75,11.98 9.78,12.70 8.79,13.41 Z"/></svg></button>
+    <button class="btn" data-acc="natural" style="padding:2px 2px;" title="Natural"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0.50 0.50 5.22 19.00" style="display:block;"><path fill="#1C1508" d="M4.47,19.00 C4.69,19.00 4.75,18.73 4.82,18.55 C4.84,18.43 4.88,18.33 4.88,18.22 C4.88,16.77 4.98,15.33 4.98,13.86 C4.98,13.33 4.94,12.78 4.94,12.26 C4.94,10.94 5.04,9.63 5.08,8.32 C5.08,8.32 5.12,8.02 5.14,7.77 L5.14,7.71 L5.16,7.47 L5.16,7.35 L5.18,7.00 C5.18,6.94 5.22,6.71 5.14,6.53 C5.04,6.33 5.12,5.90 4.71,6.00 C3.78,6.26 2.82,6.35 1.86,6.43 C1.92,5.31 1.98,4.18 1.98,3.06 C1.98,2.69 1.98,2.33 1.96,1.96 C1.96,1.63 1.90,1.32 1.77,1.00 C1.29,1.14 1.24,1.49 1.24,1.82 C1.24,3.94 1.10,6.00 1.04,8.10 C1.02,8.79 1.00,9.47 1.00,10.16 C1.00,10.75 1.02,11.31 1.04,11.88 C1.06,12.28 1.10,12.67 1.10,13.04 C1.10,13.37 1.24,13.47 1.47,13.47 C1.53,13.47 1.59,13.47 1.67,13.45 L4.04,13.10 L4.14,13.08 L4.14,14.94 C4.14,15.65 4.04,16.37 4.04,17.08 C4.04,17.55 4.08,18.02 4.21,18.49 C4.27,18.69 4.21,19.00 4.47,19.00 Z M1.78,11.16 L1.78,10.92 C1.77,10.26 1.73,9.61 1.75,8.96 L1.77,8.71 C1.88,8.71 2.02,8.73 2.16,8.71 C2.82,8.65 3.49,8.61 4.16,8.59 L4.27,8.57 L4.21,9.16 C4.20,9.67 4.16,10.20 4.16,10.71 C3.37,10.92 2.57,11.06 1.78,11.16 Z"/></svg></button>
+    <button class="btn" data-acc="sharp" style="padding:2px 2px;" title="Sharp"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="5.20 1.00 9.60 18.00" style="display:block;"><path fill="#1C1508" d="M9.08,18.00 C9.25,17.98 9.29,17.75 9.33,17.60 C9.42,17.33 9.44,17.06 9.44,16.81 C9.44,16.58 9.42,16.37 9.42,16.14 C9.42,16.00 9.42,15.81 9.44,15.66 C9.48,15.25 9.52,14.83 9.54,14.41 L10.46,14.22 C10.50,15.10 10.67,15.96 10.96,16.79 C10.98,16.89 11.06,17.02 11.19,17.02 C11.31,17.04 11.36,16.89 11.42,16.79 C11.56,16.56 11.59,16.29 11.59,16.04 C11.61,15.85 11.61,15.68 11.61,15.52 C11.61,15.02 11.56,14.50 11.54,14.00 L12.75,13.74 C13.90,13.52 14.05,13.35 14.13,12.24 C14.13,11.97 14.15,11.78 14.13,11.57 C14.11,11.30 14.00,11.12 13.78,11.12 L13.73,11.12 C13.65,11.12 13.59,11.12 13.50,11.14 C13.02,11.26 12.50,11.37 12.00,11.45 L11.65,11.51 C11.67,11.22 11.67,10.91 11.69,10.60 C11.71,9.93 11.73,9.26 11.73,8.59 C12.32,8.45 12.88,8.28 13.44,8.09 C13.76,7.99 14.03,7.82 14.11,7.49 C14.19,7.11 14.30,6.76 14.30,6.38 C14.30,6.17 14.28,5.94 14.19,5.73 C14.11,5.52 14.05,5.42 13.92,5.42 L13.88,5.42 C13.82,5.42 13.73,5.42 13.65,5.46 C13.00,5.73 12.36,5.94 11.69,6.13 L11.63,5.00 C11.59,4.11 11.54,3.19 11.36,2.29 C11.31,2.19 11.33,2.00 11.21,2.00 L11.13,2.00 C10.96,2.04 10.75,2.10 10.73,2.33 L10.73,2.73 C10.73,3.96 10.77,5.17 10.79,6.38 L9.69,6.63 C9.69,6.00 9.67,5.38 9.62,4.75 C9.60,4.44 9.60,4.15 9.44,3.84 C8.98,4.07 9.04,4.46 9.04,4.80 C9.00,5.46 8.98,6.11 8.96,6.76 C8.37,6.88 7.79,6.96 7.20,7.07 C6.35,7.21 6.22,7.34 6.22,8.28 C6.16,8.51 6.33,8.78 6.31,9.03 C6.27,9.43 6.37,9.55 6.64,9.57 C6.70,9.57 6.77,9.55 6.85,9.53 C7.54,9.43 8.21,9.32 8.87,9.20 L8.81,11.07 C8.79,11.43 8.75,11.76 8.71,12.10 C7.93,12.24 7.16,12.39 6.39,12.58 C5.95,12.68 5.70,12.85 5.70,13.35 C5.70,13.85 5.89,14.31 5.91,14.79 C5.91,15.02 5.97,15.12 6.14,15.14 C6.18,15.14 6.24,15.12 6.33,15.10 C7.08,14.93 7.83,14.79 8.58,14.62 C8.56,14.89 8.56,15.16 8.56,15.45 C8.56,16.19 8.64,16.89 8.89,17.60 C8.94,17.75 8.89,18.00 9.08,18.00 Z M9.64,11.91 C9.67,11.45 9.67,10.99 9.69,10.53 C9.71,10.03 9.71,9.55 9.71,9.05 C10.06,8.99 10.40,8.93 10.73,8.84 C10.63,9.80 10.58,10.76 10.52,11.72 Z"/></svg></button>
+    <button class="btn" data-acc="flat" style="padding:2px 2px;" title="Flat"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="7.28 -0.11 5.58 18.00" style="display:block;"><path fill="#1C1508" d="M8.19,16.39 C8.26,16.39 8.35,16.34 8.46,16.23 C8.75,15.99 9.08,15.75 9.39,15.53 C11.33,14.14 12.36,12.26 12.36,9.86 C12.36,9.55 12.36,9.26 12.32,8.95 C12.21,7.87 11.59,7.26 10.66,7.26 C10.47,7.26 10.25,7.30 10.00,7.37 C9.69,7.45 9.39,7.61 9.08,7.74 L9.05,7.76 L9.05,7.19 C9.08,6.35 9.10,5.51 9.14,4.67 C9.14,4.19 9.19,3.73 9.19,3.24 C9.19,2.78 9.14,2.29 9.03,1.83 C8.99,1.67 8.99,1.39 8.77,1.39 L8.75,1.39 C8.50,1.41 8.33,1.61 8.33,1.92 C8.30,2.54 8.24,3.17 8.26,3.79 L8.26,4.48 C8.26,5.78 8.19,7.08 8.15,8.38 C8.08,10.26 7.80,12.09 7.78,13.96 C7.78,14.69 7.82,15.46 8.02,16.19 C8.06,16.32 8.11,16.39 8.19,16.39 Z M8.79,13.41 C8.83,12.84 8.86,12.24 8.92,11.62 C8.97,11.14 8.99,10.65 8.99,10.17 L9.08,10.12 C9.50,9.95 9.91,9.73 10.38,9.73 C10.53,9.73 10.71,9.77 10.89,9.84 C11.24,9.97 11.41,10.14 11.39,10.39 C11.39,10.52 11.37,10.65 11.28,10.83 C10.75,11.98 9.78,12.70 8.79,13.41 Z"/></svg></button>
   </div>
   <!-- iPhone accidental dropdown menu -->
   <div id="accMenu">
-    <button class="btn" data-phoneacc="natural" title="natural"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0.50 0.50 5.22 19.00" style="display:block;"><path fill="#1C1508" d="M4.47,19.00 C4.69,19.00 4.75,18.73 4.82,18.55 C4.84,18.43 4.88,18.33 4.88,18.22 C4.88,16.77 4.98,15.33 4.98,13.86 C4.98,13.33 4.94,12.78 4.94,12.26 C4.94,10.94 5.04,9.63 5.08,8.32 C5.08,8.32 5.12,8.02 5.14,7.77 L5.14,7.71 L5.16,7.47 L5.16,7.35 L5.18,7.00 C5.18,6.94 5.22,6.71 5.14,6.53 C5.04,6.33 5.12,5.90 4.71,6.00 C3.78,6.26 2.82,6.35 1.86,6.43 C1.92,5.31 1.98,4.18 1.98,3.06 C1.98,2.69 1.98,2.33 1.96,1.96 C1.96,1.63 1.90,1.32 1.77,1.00 C1.29,1.14 1.24,1.49 1.24,1.82 C1.24,3.94 1.10,6.00 1.04,8.10 C1.02,8.79 1.00,9.47 1.00,10.16 C1.00,10.75 1.02,11.31 1.04,11.88 C1.06,12.28 1.10,12.67 1.10,13.04 C1.10,13.37 1.24,13.47 1.47,13.47 C1.53,13.47 1.59,13.47 1.67,13.45 L4.04,13.10 L4.14,13.08 L4.14,14.94 C4.14,15.65 4.04,16.37 4.04,17.08 C4.04,17.55 4.08,18.02 4.21,18.49 C4.27,18.69 4.21,19.00 4.47,19.00 Z M1.78,11.16 L1.78,10.92 C1.77,10.26 1.73,9.61 1.75,8.96 L1.77,8.71 C1.88,8.71 2.02,8.73 2.16,8.71 C2.82,8.65 3.49,8.61 4.16,8.59 L4.27,8.57 L4.21,9.16 C4.20,9.67 4.16,10.20 4.16,10.71 C3.37,10.92 2.57,11.06 1.78,11.16 Z"/></svg></button>
-    <button class="btn" data-phoneacc="sharp" title="sharp"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="5.20 1.00 9.60 18.00" style="display:block;"><path fill="#1C1508" d="M9.08,18.00 C9.25,17.98 9.29,17.75 9.33,17.60 C9.42,17.33 9.44,17.06 9.44,16.81 C9.44,16.58 9.42,16.37 9.42,16.14 C9.42,16.00 9.42,15.81 9.44,15.66 C9.48,15.25 9.52,14.83 9.54,14.41 L10.46,14.22 C10.50,15.10 10.67,15.96 10.96,16.79 C10.98,16.89 11.06,17.02 11.19,17.02 C11.31,17.04 11.36,16.89 11.42,16.79 C11.56,16.56 11.59,16.29 11.59,16.04 C11.61,15.85 11.61,15.68 11.61,15.52 C11.61,15.02 11.56,14.50 11.54,14.00 L12.75,13.74 C13.90,13.52 14.05,13.35 14.13,12.24 C14.13,11.97 14.15,11.78 14.13,11.57 C14.11,11.30 14.00,11.12 13.78,11.12 L13.73,11.12 C13.65,11.12 13.59,11.12 13.50,11.14 C13.02,11.26 12.50,11.37 12.00,11.45 L11.65,11.51 C11.67,11.22 11.67,10.91 11.69,10.60 C11.71,9.93 11.73,9.26 11.73,8.59 C12.32,8.45 12.88,8.28 13.44,8.09 C13.76,7.99 14.03,7.82 14.11,7.49 C14.19,7.11 14.30,6.76 14.30,6.38 C14.30,6.17 14.28,5.94 14.19,5.73 C14.11,5.52 14.05,5.42 13.92,5.42 L13.88,5.42 C13.82,5.42 13.73,5.42 13.65,5.46 C13.00,5.73 12.36,5.94 11.69,6.13 L11.63,5.00 C11.59,4.11 11.54,3.19 11.36,2.29 C11.31,2.19 11.33,2.00 11.21,2.00 L11.13,2.00 C10.96,2.04 10.75,2.10 10.73,2.33 L10.73,2.73 C10.73,3.96 10.77,5.17 10.79,6.38 L9.69,6.63 C9.69,6.00 9.67,5.38 9.62,4.75 C9.60,4.44 9.60,4.15 9.44,3.84 C8.98,4.07 9.04,4.46 9.04,4.80 C9.00,5.46 8.98,6.11 8.96,6.76 C8.37,6.88 7.79,6.96 7.20,7.07 C6.35,7.21 6.22,7.34 6.22,8.28 C6.16,8.51 6.33,8.78 6.31,9.03 C6.27,9.43 6.37,9.55 6.64,9.57 C6.70,9.57 6.77,9.55 6.85,9.53 C7.54,9.43 8.21,9.32 8.87,9.20 L8.81,11.07 C8.79,11.43 8.75,11.76 8.71,12.10 C7.93,12.24 7.16,12.39 6.39,12.58 C5.95,12.68 5.70,12.85 5.70,13.35 C5.70,13.85 5.89,14.31 5.91,14.79 C5.91,15.02 5.97,15.12 6.14,15.14 C6.18,15.14 6.24,15.12 6.33,15.10 C7.08,14.93 7.83,14.79 8.58,14.62 C8.56,14.89 8.56,15.16 8.56,15.45 C8.56,16.19 8.64,16.89 8.89,17.60 C8.94,17.75 8.89,18.00 9.08,18.00 Z M9.64,11.91 C9.67,11.45 9.67,10.99 9.69,10.53 C9.71,10.03 9.71,9.55 9.71,9.05 C10.06,8.99 10.40,8.93 10.73,8.84 C10.63,9.80 10.58,10.76 10.52,11.72 Z"/></svg></button>
-    <button class="btn" data-phoneacc="flat" title="flat"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="7.28 -0.11 5.58 18.00" style="display:block;"><path fill="#1C1508" d="M8.19,16.39 C8.26,16.39 8.35,16.34 8.46,16.23 C8.75,15.99 9.08,15.75 9.39,15.53 C11.33,14.14 12.36,12.26 12.36,9.86 C12.36,9.55 12.36,9.26 12.32,8.95 C12.21,7.87 11.59,7.26 10.66,7.26 C10.47,7.26 10.25,7.30 10.00,7.37 C9.69,7.45 9.39,7.61 9.08,7.74 L9.05,7.76 L9.05,7.19 C9.08,6.35 9.10,5.51 9.14,4.67 C9.14,4.19 9.19,3.73 9.19,3.24 C9.19,2.78 9.14,2.29 9.03,1.83 C8.99,1.67 8.99,1.39 8.77,1.39 L8.75,1.39 C8.50,1.41 8.33,1.61 8.33,1.92 C8.30,2.54 8.24,3.17 8.26,3.79 L8.26,4.48 C8.26,5.78 8.19,7.08 8.15,8.38 C8.08,10.26 7.80,12.09 7.78,13.96 C7.78,14.69 7.82,15.46 8.02,16.19 C8.06,16.32 8.11,16.39 8.19,16.39 Z M8.79,13.41 C8.83,12.84 8.86,12.24 8.92,11.62 C8.97,11.14 8.99,10.65 8.99,10.17 L9.08,10.12 C9.50,9.95 9.91,9.73 10.38,9.73 C10.53,9.73 10.71,9.77 10.89,9.84 C11.24,9.97 11.41,10.14 11.39,10.39 C11.39,10.52 11.37,10.65 11.28,10.83 C10.75,11.98 9.78,12.70 8.79,13.41 Z"/></svg></button>
+    <button class="btn" data-phoneacc="natural" title="Natural"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0.50 0.50 5.22 19.00" style="display:block;"><path fill="#1C1508" d="M4.47,19.00 C4.69,19.00 4.75,18.73 4.82,18.55 C4.84,18.43 4.88,18.33 4.88,18.22 C4.88,16.77 4.98,15.33 4.98,13.86 C4.98,13.33 4.94,12.78 4.94,12.26 C4.94,10.94 5.04,9.63 5.08,8.32 C5.08,8.32 5.12,8.02 5.14,7.77 L5.14,7.71 L5.16,7.47 L5.16,7.35 L5.18,7.00 C5.18,6.94 5.22,6.71 5.14,6.53 C5.04,6.33 5.12,5.90 4.71,6.00 C3.78,6.26 2.82,6.35 1.86,6.43 C1.92,5.31 1.98,4.18 1.98,3.06 C1.98,2.69 1.98,2.33 1.96,1.96 C1.96,1.63 1.90,1.32 1.77,1.00 C1.29,1.14 1.24,1.49 1.24,1.82 C1.24,3.94 1.10,6.00 1.04,8.10 C1.02,8.79 1.00,9.47 1.00,10.16 C1.00,10.75 1.02,11.31 1.04,11.88 C1.06,12.28 1.10,12.67 1.10,13.04 C1.10,13.37 1.24,13.47 1.47,13.47 C1.53,13.47 1.59,13.47 1.67,13.45 L4.04,13.10 L4.14,13.08 L4.14,14.94 C4.14,15.65 4.04,16.37 4.04,17.08 C4.04,17.55 4.08,18.02 4.21,18.49 C4.27,18.69 4.21,19.00 4.47,19.00 Z M1.78,11.16 L1.78,10.92 C1.77,10.26 1.73,9.61 1.75,8.96 L1.77,8.71 C1.88,8.71 2.02,8.73 2.16,8.71 C2.82,8.65 3.49,8.61 4.16,8.59 L4.27,8.57 L4.21,9.16 C4.20,9.67 4.16,10.20 4.16,10.71 C3.37,10.92 2.57,11.06 1.78,11.16 Z"/></svg></button>
+    <button class="btn" data-phoneacc="sharp" title="Sharp"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="5.20 1.00 9.60 18.00" style="display:block;"><path fill="#1C1508" d="M9.08,18.00 C9.25,17.98 9.29,17.75 9.33,17.60 C9.42,17.33 9.44,17.06 9.44,16.81 C9.44,16.58 9.42,16.37 9.42,16.14 C9.42,16.00 9.42,15.81 9.44,15.66 C9.48,15.25 9.52,14.83 9.54,14.41 L10.46,14.22 C10.50,15.10 10.67,15.96 10.96,16.79 C10.98,16.89 11.06,17.02 11.19,17.02 C11.31,17.04 11.36,16.89 11.42,16.79 C11.56,16.56 11.59,16.29 11.59,16.04 C11.61,15.85 11.61,15.68 11.61,15.52 C11.61,15.02 11.56,14.50 11.54,14.00 L12.75,13.74 C13.90,13.52 14.05,13.35 14.13,12.24 C14.13,11.97 14.15,11.78 14.13,11.57 C14.11,11.30 14.00,11.12 13.78,11.12 L13.73,11.12 C13.65,11.12 13.59,11.12 13.50,11.14 C13.02,11.26 12.50,11.37 12.00,11.45 L11.65,11.51 C11.67,11.22 11.67,10.91 11.69,10.60 C11.71,9.93 11.73,9.26 11.73,8.59 C12.32,8.45 12.88,8.28 13.44,8.09 C13.76,7.99 14.03,7.82 14.11,7.49 C14.19,7.11 14.30,6.76 14.30,6.38 C14.30,6.17 14.28,5.94 14.19,5.73 C14.11,5.52 14.05,5.42 13.92,5.42 L13.88,5.42 C13.82,5.42 13.73,5.42 13.65,5.46 C13.00,5.73 12.36,5.94 11.69,6.13 L11.63,5.00 C11.59,4.11 11.54,3.19 11.36,2.29 C11.31,2.19 11.33,2.00 11.21,2.00 L11.13,2.00 C10.96,2.04 10.75,2.10 10.73,2.33 L10.73,2.73 C10.73,3.96 10.77,5.17 10.79,6.38 L9.69,6.63 C9.69,6.00 9.67,5.38 9.62,4.75 C9.60,4.44 9.60,4.15 9.44,3.84 C8.98,4.07 9.04,4.46 9.04,4.80 C9.00,5.46 8.98,6.11 8.96,6.76 C8.37,6.88 7.79,6.96 7.20,7.07 C6.35,7.21 6.22,7.34 6.22,8.28 C6.16,8.51 6.33,8.78 6.31,9.03 C6.27,9.43 6.37,9.55 6.64,9.57 C6.70,9.57 6.77,9.55 6.85,9.53 C7.54,9.43 8.21,9.32 8.87,9.20 L8.81,11.07 C8.79,11.43 8.75,11.76 8.71,12.10 C7.93,12.24 7.16,12.39 6.39,12.58 C5.95,12.68 5.70,12.85 5.70,13.35 C5.70,13.85 5.89,14.31 5.91,14.79 C5.91,15.02 5.97,15.12 6.14,15.14 C6.18,15.14 6.24,15.12 6.33,15.10 C7.08,14.93 7.83,14.79 8.58,14.62 C8.56,14.89 8.56,15.16 8.56,15.45 C8.56,16.19 8.64,16.89 8.89,17.60 C8.94,17.75 8.89,18.00 9.08,18.00 Z M9.64,11.91 C9.67,11.45 9.67,10.99 9.69,10.53 C9.71,10.03 9.71,9.55 9.71,9.05 C10.06,8.99 10.40,8.93 10.73,8.84 C10.63,9.80 10.58,10.76 10.52,11.72 Z"/></svg></button>
+    <button class="btn" data-phoneacc="flat" title="Flat"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="7.28 -0.11 5.58 18.00" style="display:block;"><path fill="#1C1508" d="M8.19,16.39 C8.26,16.39 8.35,16.34 8.46,16.23 C8.75,15.99 9.08,15.75 9.39,15.53 C11.33,14.14 12.36,12.26 12.36,9.86 C12.36,9.55 12.36,9.26 12.32,8.95 C12.21,7.87 11.59,7.26 10.66,7.26 C10.47,7.26 10.25,7.30 10.00,7.37 C9.69,7.45 9.39,7.61 9.08,7.74 L9.05,7.76 L9.05,7.19 C9.08,6.35 9.10,5.51 9.14,4.67 C9.14,4.19 9.19,3.73 9.19,3.24 C9.19,2.78 9.14,2.29 9.03,1.83 C8.99,1.67 8.99,1.39 8.77,1.39 L8.75,1.39 C8.50,1.41 8.33,1.61 8.33,1.92 C8.30,2.54 8.24,3.17 8.26,3.79 L8.26,4.48 C8.26,5.78 8.19,7.08 8.15,8.38 C8.08,10.26 7.80,12.09 7.78,13.96 C7.78,14.69 7.82,15.46 8.02,16.19 C8.06,16.32 8.11,16.39 8.19,16.39 Z M8.79,13.41 C8.83,12.84 8.86,12.24 8.92,11.62 C8.97,11.14 8.99,10.65 8.99,10.17 L9.08,10.12 C9.50,9.95 9.91,9.73 10.38,9.73 C10.53,9.73 10.71,9.77 10.89,9.84 C11.24,9.97 11.41,10.14 11.39,10.39 C11.39,10.52 11.37,10.65 11.28,10.83 C10.75,11.98 9.78,12.70 8.79,13.41 Z"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp">
-    <button class="btn" data-mode="stem-beam" style="padding:2px 2px;" title="stem/beam"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="4.7" y="2" width="0.6" height="12" fill="#1C1508"/><rect x="14.7" y="2" width="0.6" height="12" fill="#1C1508"/><rect x="4.7" y="2" width="10.6" height="2.1" fill="#1C1508"/><rect x="4.7" y="5.1" width="10.6" height="2.1" fill="#1C1508"/></svg></button>
-    <button class="btn disabled" id="dotBtn" data-dot style="padding:2px 2px;" title="dotted note"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" style="display:block;"><circle cx="10" cy="10" r="2.25" fill="#1C1508"/></svg></button>
-    <button class="btn" data-mode="tie" style="padding:2px 2px;" title="tie"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><path d="M4,11 C7,8 13,8 16,11" fill="none" stroke="#1C1508" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    <button class="btn" data-mode="stem-beam" style="padding:2px 2px;" title="Stem/Beam"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="4.7" y="2" width="0.6" height="12" fill="#1C1508"/><rect x="14.7" y="2" width="0.6" height="12" fill="#1C1508"/><rect x="4.7" y="2" width="10.6" height="2.1" fill="#1C1508"/><rect x="4.7" y="5.1" width="10.6" height="2.1" fill="#1C1508"/></svg></button>
+    <button class="btn disabled" id="dotBtn" data-dot style="padding:2px 2px;" title="Dotted Note"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" style="display:block;"><circle cx="10" cy="10" r="2.25" fill="#1C1508"/></svg></button>
+    <button class="btn" data-mode="tie" style="padding:2px 2px;" title="Tie"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><path d="M4,11 C7,8 13,8 16,11" fill="none" stroke="#1C1508" stroke-width="1.4" stroke-linecap="round"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp">
-    <button class="btn" id="restBtn" data-mode="rest" data-rest="quarter" style="padding:2px 7px;position:relative;" title="rest"><svg id="restBtnIcon" xmlns="http://www.w3.org/2000/svg" width="7" height="14" viewBox="0 0 3.2 10" style="display:block;"><path fill="#1C1508" d="M 1.325,9.988 C 1.422,9.928 1.410,9.807 1.434,9.711 C 1.434,9.663 1.410,9.614 1.398,9.566 C 1.301,9.145 1.193,8.735 1.096,8.313 C 1.084,8.265 1.084,8.217 1.084,8.181 C 1.084,7.771 1.386,7.277 1.723,7.133 C 1.807,7.084 1.880,7.120 1.964,7.145 C 2.349,7.265 2.554,7.590 2.771,7.892 C 2.831,7.976 2.916,8.084 3.012,8.084 C 3.036,8.084 3.048,8.084 3.072,8.072 C 3.181,8.024 3.229,7.916 3.229,7.807 L 3.217,7.723 C 3.169,7.446 3.120,7.157 2.940,6.940 C 2.578,6.506 2.386,5.976 2.145,5.482 C 2.108,5.410 2.084,5.349 2.084,5.301 C 2.084,5.217 2.133,5.145 2.217,5.060 C 2.434,4.831 2.663,4.627 2.807,4.349 C 2.940,4.133 3.024,3.904 3.024,3.675 C 3.024,3.518 2.988,3.361 2.880,3.193 C 2.518,2.590 2.145,2.000 1.843,1.361 C 1.639,0.928 1.386,0.518 1.024,0.193 C 0.940,0.108 0.831,0.000 0.711,0.000 C 0.663,0.000 0.614,0.012 0.554,0.048 C 0.434,0.120 0.386,0.217 0.386,0.301 C 0.386,0.398 0.434,0.494 0.506,0.590 C 0.880,1.072 1.108,1.639 1.470,2.120 C 1.578,2.253 1.627,2.349 1.627,2.434 C 1.627,2.542 1.530,2.627 1.337,2.747 C 1.084,2.892 0.819,3.036 0.578,3.217 C 0.458,3.301 0.398,3.398 0.398,3.494 C 0.398,3.554 0.422,3.614 0.446,3.675 C 0.566,3.952 0.723,4.205 0.892,4.458 C 1.157,4.831 1.398,5.241 1.590,5.663 C 1.506,5.735 1.434,5.711 1.361,5.723 C 0.542,5.831 0.000,6.446 0.060,7.181 C 0.145,8.060 0.470,8.880 0.867,9.663 C 0.916,9.759 0.976,9.855 1.096,9.892 C 1.169,9.916 1.217,10.000 1.277,10.000 C 1.289,10.000 1.313,10.000 1.325,9.988 Z"/></svg></button>
+    <button class="btn" id="restBtn" data-mode="rest" data-rest="quarter" style="padding:2px 7px;position:relative;" title="Rest"><svg id="restBtnIcon" xmlns="http://www.w3.org/2000/svg" width="7" height="14" viewBox="0 0 3.2 10" style="display:block;"><path fill="#1C1508" d="M 1.325,9.988 C 1.422,9.928 1.410,9.807 1.434,9.711 C 1.434,9.663 1.410,9.614 1.398,9.566 C 1.301,9.145 1.193,8.735 1.096,8.313 C 1.084,8.265 1.084,8.217 1.084,8.181 C 1.084,7.771 1.386,7.277 1.723,7.133 C 1.807,7.084 1.880,7.120 1.964,7.145 C 2.349,7.265 2.554,7.590 2.771,7.892 C 2.831,7.976 2.916,8.084 3.012,8.084 C 3.036,8.084 3.048,8.084 3.072,8.072 C 3.181,8.024 3.229,7.916 3.229,7.807 L 3.217,7.723 C 3.169,7.446 3.120,7.157 2.940,6.940 C 2.578,6.506 2.386,5.976 2.145,5.482 C 2.108,5.410 2.084,5.349 2.084,5.301 C 2.084,5.217 2.133,5.145 2.217,5.060 C 2.434,4.831 2.663,4.627 2.807,4.349 C 2.940,4.133 3.024,3.904 3.024,3.675 C 3.024,3.518 2.988,3.361 2.880,3.193 C 2.518,2.590 2.145,2.000 1.843,1.361 C 1.639,0.928 1.386,0.518 1.024,0.193 C 0.940,0.108 0.831,0.000 0.711,0.000 C 0.663,0.000 0.614,0.012 0.554,0.048 C 0.434,0.120 0.386,0.217 0.386,0.301 C 0.386,0.398 0.434,0.494 0.506,0.590 C 0.880,1.072 1.108,1.639 1.470,2.120 C 1.578,2.253 1.627,2.349 1.627,2.434 C 1.627,2.542 1.530,2.627 1.337,2.747 C 1.084,2.892 0.819,3.036 0.578,3.217 C 0.458,3.301 0.398,3.398 0.398,3.494 C 0.398,3.554 0.422,3.614 0.446,3.675 C 0.566,3.952 0.723,4.205 0.892,4.458 C 1.157,4.831 1.398,5.241 1.590,5.663 C 1.506,5.735 1.434,5.711 1.361,5.723 C 0.542,5.831 0.000,6.446 0.060,7.181 C 0.145,8.060 0.470,8.880 0.867,9.663 C 0.916,9.759 0.976,9.855 1.096,9.892 C 1.169,9.916 1.217,10.000 1.277,10.000 C 1.289,10.000 1.313,10.000 1.325,9.988 Z"/></svg></button>
   </div>
   <!-- iPhone row break: after rest (hidden on desktop/iPad) -->
   <div class="iphone-break" style="display:none;"></div>
   <div class="sep"></div>
   <div class="grp" id="clefGrp">
-    <button class="btn" id="trebleClefBtn" data-mode="clef-treble-bravura" style="padding:2px 2px;position:relative;" title="treble clef"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="30" viewBox="0 -0.348 0.671 1.756" style="display:block;"><path fill="#1C1508" d="M 0.4700,-0.1930 C 0.5030,-0.1930 0.5300,-0.1660 0.5300,-0.1110 C 0.5300,-0.0420 0.4970,0.0220 0.4190,0.1000 C 0.4030,0.1160 0.3790,0.1390 0.3560,0.1590 C 0.3490,0.1650 0.3450,0.1640 0.3430,0.1510 C 0.3390,0.1250 0.3370,0.0910 0.3370,0.0590 C 0.3370,-0.0970 0.4090,-0.1930 0.4700,-0.1930 Z M 0.4300,0.6470 C 0.4280,0.6350 0.4290,0.6320 0.4410,0.6330 C 0.5220,0.6400 0.5890,0.7080 0.5890,0.7960 C 0.5890,0.8590 0.5510,0.9100 0.4950,0.9380 C 0.4830,0.9440 0.4810,0.9440 0.4790,0.9320 Z M 0.3610,0.4880 C 0.3640,0.5070 0.3640,0.5060 0.3460,0.5120 C 0.2580,0.5420 0.2010,0.6210 0.2010,0.7060 C 0.2010,0.7960 0.2480,0.8600 0.3160,0.8830 C 0.3240,0.8860 0.3360,0.8890 0.3430,0.8890 C 0.3510,0.8890 0.3550,0.8840 0.3550,0.8780 C 0.3550,0.8710 0.3470,0.8680 0.3400,0.8650 C 0.2980,0.8470 0.2680,0.8040 0.2680,0.7580 C 0.2680,0.7010 0.3070,0.6580 0.3680,0.6410 C 0.3840,0.6370 0.3860,0.6380 0.3880,0.6490 L 0.4380,0.9470 C 0.4400,0.9580 0.4390,0.9580 0.4240,0.9610 C 0.4080,0.9640 0.3880,0.9660 0.3680,0.9660 C 0.1930,0.9660 0.0800,0.8690 0.0800,0.7300 C 0.0800,0.6710 0.0900,0.5920 0.1730,0.4980 C 0.2330,0.4310 0.2790,0.3940 0.3260,0.3560 C 0.3360,0.3480 0.3380,0.3490 0.3400,0.3600 Z M 0.3760,0.3350 C 0.3740,0.3230 0.3760,0.3220 0.3820,0.3160 C 0.3980,0.3010 0.4190,0.2800 0.4380,0.2590 C 0.5220,0.1670 0.5720,0.0480 0.5720,-0.0650 C 0.5720,-0.1520 0.5480,-0.2380 0.5070,-0.2980 C 0.4920,-0.3200 0.4660,-0.3480 0.4550,-0.3480 C 0.4410,-0.3480 0.4100,-0.3220 0.3900,-0.3000 C 0.3160,-0.2180 0.2920,-0.0930 0.2920,0.0110 C 0.2920,0.0690 0.2990,0.1340 0.3060,0.1750 C 0.3080,0.1870 0.3090,0.1890 0.2970,0.1990 C 0.2330,0.2520 0.1640,0.3130 0.1120,0.3770 C 0.0430,0.4630 0.0000,0.5560 0.0000,0.6630 C 0.0000,0.8370 0.1190,1.0020 0.3640,1.0020 C 0.3870,1.0020 0.4130,1.0000 0.4330,0.9960 C 0.4440,0.9940 0.4460,0.9930 0.4480,1.0050 C 0.4600,1.0720 0.4750,1.1590 0.4750,1.2060 C 0.4750,1.3540 0.3750,1.3720 0.3160,1.3720 C 0.2620,1.3720 0.2360,1.3560 0.2360,1.3430 C 0.2360,1.3360 0.2450,1.3330 0.2680,1.3260 C 0.2990,1.3170 0.3350,1.2900 0.3350,1.2320 C 0.3350,1.1770 0.3000,1.1300 0.2390,1.1300 C 0.1720,1.1300 0.1320,1.1830 0.1320,1.2450 C 0.1320,1.3100 0.1710,1.4080 0.3220,1.4080 C 0.3890,1.4080 0.5190,1.3780 0.5190,1.2080 C 0.5190,1.1510 0.5010,1.0560 0.4900,0.9940 C 0.4880,0.9820 0.4890,0.9830 0.5030,0.9770 C 0.6040,0.9370 0.6710,0.8520 0.6710,0.7390 C 0.6710,0.6110 0.5770,0.4980 0.4300,0.4980 C 0.4040,0.4980 0.4040,0.4980 0.4010,0.4800 Z"/></svg></button>
-    <button class="btn" id="bassClefBtn" data-mode="clef-bass-bravura" style="padding:2px 2px;position:relative;" title="bass clef"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="15" viewBox="0 -0.012 0.689 0.897" style="display:block;"><path fill="#1C1508" d="M 0.2570,-0.0120 C 0.0830,-0.0120 0.0050,0.1150 0.0050,0.2110 C 0.0050,0.2910 0.0470,0.3600 0.1280,0.3600 C 0.1910,0.3600 0.2340,0.3160 0.2340,0.2540 C 0.2340,0.1900 0.1870,0.1500 0.1380,0.1500 C 0.1110,0.1500 0.1010,0.1570 0.0880,0.1570 C 0.0750,0.1570 0.0720,0.1490 0.0720,0.1390 C 0.0720,0.0990 0.1320,0.0260 0.2340,0.0260 C 0.3400,0.0260 0.3860,0.1300 0.3860,0.2870 C 0.3860,0.3900 0.3640,0.5100 0.3020,0.6060 C 0.2420,0.6990 0.1390,0.7840 0.0150,0.8550 C 0.0060,0.8600 0.0000,0.8650 0.0000,0.8730 C 0.0000,0.8790 0.0040,0.8850 0.0130,0.8850 C 0.0180,0.8850 0.0240,0.8830 0.0300,0.8800 C 0.1630,0.8150 0.2910,0.7390 0.3970,0.6250 C 0.4840,0.5310 0.5360,0.4090 0.5360,0.2780 C 0.5360,0.1040 0.4300,-0.0120 0.2570,-0.0120 Z M 0.6350,0.3210 C 0.6040,0.3210 0.5810,0.3440 0.5810,0.3750 C 0.5810,0.4060 0.6040,0.4290 0.6350,0.4290 C 0.6660,0.4290 0.6890,0.4060 0.6890,0.3750 C 0.6890,0.3440 0.6660,0.3210 0.6350,0.3210 Z M 0.6340,0.0700 C 0.6030,0.0700 0.5790,0.0940 0.5790,0.1250 C 0.5790,0.1560 0.6030,0.1800 0.6340,0.1800 C 0.6650,0.1800 0.6890,0.1560 0.6890,0.1250 C 0.6890,0.0940 0.6650,0.0700 0.6340,0.0700 Z"/></svg></button>
+    <button class="btn" id="trebleClefBtn" data-mode="clef-treble-bravura" style="padding:2px 2px;position:relative;" title="Treble Clef"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="30" viewBox="0 -0.348 0.671 1.756" style="display:block;"><path fill="#1C1508" d="M 0.4700,-0.1930 C 0.5030,-0.1930 0.5300,-0.1660 0.5300,-0.1110 C 0.5300,-0.0420 0.4970,0.0220 0.4190,0.1000 C 0.4030,0.1160 0.3790,0.1390 0.3560,0.1590 C 0.3490,0.1650 0.3450,0.1640 0.3430,0.1510 C 0.3390,0.1250 0.3370,0.0910 0.3370,0.0590 C 0.3370,-0.0970 0.4090,-0.1930 0.4700,-0.1930 Z M 0.4300,0.6470 C 0.4280,0.6350 0.4290,0.6320 0.4410,0.6330 C 0.5220,0.6400 0.5890,0.7080 0.5890,0.7960 C 0.5890,0.8590 0.5510,0.9100 0.4950,0.9380 C 0.4830,0.9440 0.4810,0.9440 0.4790,0.9320 Z M 0.3610,0.4880 C 0.3640,0.5070 0.3640,0.5060 0.3460,0.5120 C 0.2580,0.5420 0.2010,0.6210 0.2010,0.7060 C 0.2010,0.7960 0.2480,0.8600 0.3160,0.8830 C 0.3240,0.8860 0.3360,0.8890 0.3430,0.8890 C 0.3510,0.8890 0.3550,0.8840 0.3550,0.8780 C 0.3550,0.8710 0.3470,0.8680 0.3400,0.8650 C 0.2980,0.8470 0.2680,0.8040 0.2680,0.7580 C 0.2680,0.7010 0.3070,0.6580 0.3680,0.6410 C 0.3840,0.6370 0.3860,0.6380 0.3880,0.6490 L 0.4380,0.9470 C 0.4400,0.9580 0.4390,0.9580 0.4240,0.9610 C 0.4080,0.9640 0.3880,0.9660 0.3680,0.9660 C 0.1930,0.9660 0.0800,0.8690 0.0800,0.7300 C 0.0800,0.6710 0.0900,0.5920 0.1730,0.4980 C 0.2330,0.4310 0.2790,0.3940 0.3260,0.3560 C 0.3360,0.3480 0.3380,0.3490 0.3400,0.3600 Z M 0.3760,0.3350 C 0.3740,0.3230 0.3760,0.3220 0.3820,0.3160 C 0.3980,0.3010 0.4190,0.2800 0.4380,0.2590 C 0.5220,0.1670 0.5720,0.0480 0.5720,-0.0650 C 0.5720,-0.1520 0.5480,-0.2380 0.5070,-0.2980 C 0.4920,-0.3200 0.4660,-0.3480 0.4550,-0.3480 C 0.4410,-0.3480 0.4100,-0.3220 0.3900,-0.3000 C 0.3160,-0.2180 0.2920,-0.0930 0.2920,0.0110 C 0.2920,0.0690 0.2990,0.1340 0.3060,0.1750 C 0.3080,0.1870 0.3090,0.1890 0.2970,0.1990 C 0.2330,0.2520 0.1640,0.3130 0.1120,0.3770 C 0.0430,0.4630 0.0000,0.5560 0.0000,0.6630 C 0.0000,0.8370 0.1190,1.0020 0.3640,1.0020 C 0.3870,1.0020 0.4130,1.0000 0.4330,0.9960 C 0.4440,0.9940 0.4460,0.9930 0.4480,1.0050 C 0.4600,1.0720 0.4750,1.1590 0.4750,1.2060 C 0.4750,1.3540 0.3750,1.3720 0.3160,1.3720 C 0.2620,1.3720 0.2360,1.3560 0.2360,1.3430 C 0.2360,1.3360 0.2450,1.3330 0.2680,1.3260 C 0.2990,1.3170 0.3350,1.2900 0.3350,1.2320 C 0.3350,1.1770 0.3000,1.1300 0.2390,1.1300 C 0.1720,1.1300 0.1320,1.1830 0.1320,1.2450 C 0.1320,1.3100 0.1710,1.4080 0.3220,1.4080 C 0.3890,1.4080 0.5190,1.3780 0.5190,1.2080 C 0.5190,1.1510 0.5010,1.0560 0.4900,0.9940 C 0.4880,0.9820 0.4890,0.9830 0.5030,0.9770 C 0.6040,0.9370 0.6710,0.8520 0.6710,0.7390 C 0.6710,0.6110 0.5770,0.4980 0.4300,0.4980 C 0.4040,0.4980 0.4040,0.4980 0.4010,0.4800 Z"/></svg></button>
+    <button class="btn" id="bassClefBtn" data-mode="clef-bass-bravura" style="padding:2px 2px;position:relative;" title="Bass Clef"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="15" viewBox="0 -0.012 0.689 0.897" style="display:block;"><path fill="#1C1508" d="M 0.2570,-0.0120 C 0.0830,-0.0120 0.0050,0.1150 0.0050,0.2110 C 0.0050,0.2910 0.0470,0.3600 0.1280,0.3600 C 0.1910,0.3600 0.2340,0.3160 0.2340,0.2540 C 0.2340,0.1900 0.1870,0.1500 0.1380,0.1500 C 0.1110,0.1500 0.1010,0.1570 0.0880,0.1570 C 0.0750,0.1570 0.0720,0.1490 0.0720,0.1390 C 0.0720,0.0990 0.1320,0.0260 0.2340,0.0260 C 0.3400,0.0260 0.3860,0.1300 0.3860,0.2870 C 0.3860,0.3900 0.3640,0.5100 0.3020,0.6060 C 0.2420,0.6990 0.1390,0.7840 0.0150,0.8550 C 0.0060,0.8600 0.0000,0.8650 0.0000,0.8730 C 0.0000,0.8790 0.0040,0.8850 0.0130,0.8850 C 0.0180,0.8850 0.0240,0.8830 0.0300,0.8800 C 0.1630,0.8150 0.2910,0.7390 0.3970,0.6250 C 0.4840,0.5310 0.5360,0.4090 0.5360,0.2780 C 0.5360,0.1040 0.4300,-0.0120 0.2570,-0.0120 Z M 0.6350,0.3210 C 0.6040,0.3210 0.5810,0.3440 0.5810,0.3750 C 0.5810,0.4060 0.6040,0.4290 0.6350,0.4290 C 0.6660,0.4290 0.6890,0.4060 0.6890,0.3750 C 0.6890,0.3440 0.6660,0.3210 0.6350,0.3210 Z M 0.6340,0.0700 C 0.6030,0.0700 0.5790,0.0940 0.5790,0.1250 C 0.5790,0.1560 0.6030,0.1800 0.6340,0.1800 C 0.6650,0.1800 0.6890,0.1560 0.6890,0.1250 C 0.6890,0.0940 0.6650,0.0700 0.6340,0.0700 Z"/></svg></button>
   </div>
   <div id="trebleClefMenu" style="display:none;position:fixed;background:var(--grp-bg);color:var(--select-color);border:0.5px solid var(--select-border);border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,0.18);z-index:99999;padding:4px;flex-direction:column;gap:2px;min-width:36px;">
     <span class="clef-opt" data-clefmode="clef-treble-bravura" style="padding:4px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="30" viewBox="0 -0.348 0.671 1.756" style="display:block;"><path fill="currentColor" d="M 0.4700,-0.1930 C 0.5030,-0.1930 0.5300,-0.1660 0.5300,-0.1110 C 0.5300,-0.0420 0.4970,0.0220 0.4190,0.1000 C 0.4030,0.1160 0.3790,0.1390 0.3560,0.1590 C 0.3490,0.1650 0.3450,0.1640 0.3430,0.1510 C 0.3390,0.1250 0.3370,0.0910 0.3370,0.0590 C 0.3370,-0.0970 0.4090,-0.1930 0.4700,-0.1930 Z M 0.4300,0.6470 C 0.4280,0.6350 0.4290,0.6320 0.4410,0.6330 C 0.5220,0.6400 0.5890,0.7080 0.5890,0.7960 C 0.5890,0.8590 0.5510,0.9100 0.4950,0.9380 C 0.4830,0.9440 0.4810,0.9440 0.4790,0.9320 Z M 0.3610,0.4880 C 0.3640,0.5070 0.3640,0.5060 0.3460,0.5120 C 0.2580,0.5420 0.2010,0.6210 0.2010,0.7060 C 0.2010,0.7960 0.2480,0.8600 0.3160,0.8830 C 0.3240,0.8860 0.3360,0.8890 0.3430,0.8890 C 0.3510,0.8890 0.3550,0.8840 0.3550,0.8780 C 0.3550,0.8710 0.3470,0.8680 0.3400,0.8650 C 0.2980,0.8470 0.2680,0.8040 0.2680,0.7580 C 0.2680,0.7010 0.3070,0.6580 0.3680,0.6410 C 0.3840,0.6370 0.3860,0.6380 0.3880,0.6490 L 0.4380,0.9470 C 0.4400,0.9580 0.4390,0.9580 0.4240,0.9610 C 0.4080,0.9640 0.3880,0.9660 0.3680,0.9660 C 0.1930,0.9660 0.0800,0.8690 0.0800,0.7300 C 0.0800,0.6710 0.0900,0.5920 0.1730,0.4980 C 0.2330,0.4310 0.2790,0.3940 0.3260,0.3560 C 0.3360,0.3480 0.3380,0.3490 0.3400,0.3600 Z M 0.3760,0.3350 C 0.3740,0.3230 0.3760,0.3220 0.3820,0.3160 C 0.3980,0.3010 0.4190,0.2800 0.4380,0.2590 C 0.5220,0.1670 0.5720,0.0480 0.5720,-0.0650 C 0.5720,-0.1520 0.5480,-0.2380 0.5070,-0.2980 C 0.4920,-0.3200 0.4660,-0.3480 0.4550,-0.3480 C 0.4410,-0.3480 0.4100,-0.3220 0.3900,-0.3000 C 0.3160,-0.2180 0.2920,-0.0930 0.2920,0.0110 C 0.2920,0.0690 0.2990,0.1340 0.3060,0.1750 C 0.3080,0.1870 0.3090,0.1890 0.2970,0.1990 C 0.2330,0.2520 0.1640,0.3130 0.1120,0.3770 C 0.0430,0.4630 0.0000,0.5560 0.0000,0.6630 C 0.0000,0.8370 0.1190,1.0020 0.3640,1.0020 C 0.3870,1.0020 0.4130,1.0000 0.4330,0.9960 C 0.4440,0.9940 0.4460,0.9930 0.4480,1.0050 C 0.4600,1.0720 0.4750,1.1590 0.4750,1.2060 C 0.4750,1.3540 0.3750,1.3720 0.3160,1.3720 C 0.2620,1.3720 0.2360,1.3560 0.2360,1.3430 C 0.2360,1.3360 0.2450,1.3330 0.2680,1.3260 C 0.2990,1.3170 0.3350,1.2900 0.3350,1.2320 C 0.3350,1.1770 0.3000,1.1300 0.2390,1.1300 C 0.1720,1.1300 0.1320,1.1830 0.1320,1.2450 C 0.1320,1.3100 0.1710,1.4080 0.3220,1.4080 C 0.3890,1.4080 0.5190,1.3780 0.5190,1.2080 C 0.5190,1.1510 0.5010,1.0560 0.4900,0.9940 C 0.4880,0.9820 0.4890,0.9830 0.5030,0.9770 C 0.6040,0.9370 0.6710,0.8520 0.6710,0.7390 C 0.6710,0.6110 0.5770,0.4980 0.4300,0.4980 C 0.4040,0.4980 0.4040,0.4980 0.4010,0.4800 Z"/></svg></span>
@@ -566,28 +575,28 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   </div>
   <div class="sep"></div>
   <div class="grp" id="keySigGrp">
-    <button class="btn" id="keySigBtn" style="padding:2px 2px;" title="key signature"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-1 -5 14 18" style="display:block;"><line x1="1.4" y1="-2.5" x2="1.4" y2="4" stroke="#1C1508" stroke-width="0.6"/><line x1="3.2" y1="-2.5" x2="3.2" y2="4" stroke="#1C1508" stroke-width="0.6"/><line x1="0" y1="1.2" x2="4.6" y2="0.2" stroke="#1C1508" stroke-width="0.9"/><line x1="0" y1="2.8" x2="4.6" y2="1.8" stroke="#1C1508" stroke-width="0.9"/><line x1="5.4" y1="5" x2="5.4" y2="11.5" stroke="#1C1508" stroke-width="0.6"/><line x1="7.2" y1="5" x2="7.2" y2="11.5" stroke="#1C1508" stroke-width="0.6"/><line x1="4" y1="8.7" x2="8.6" y2="7.7" stroke="#1C1508" stroke-width="0.9"/><line x1="4" y1="10.3" x2="8.6" y2="9.3" stroke="#1C1508" stroke-width="0.9"/><line x1="9.4" y1="-4" x2="9.4" y2="2.5" stroke="#1C1508" stroke-width="0.6"/><line x1="11.2" y1="-4" x2="11.2" y2="2.5" stroke="#1C1508" stroke-width="0.6"/><line x1="8" y1="-0.3" x2="12.6" y2="-1.3" stroke="#1C1508" stroke-width="0.9"/><line x1="8" y1="1.3" x2="12.6" y2="0.3" stroke="#1C1508" stroke-width="0.9"/></svg></button>
+    <button class="btn" id="keySigBtn" style="padding:2px 2px;" title="Key Signature"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-1 -5 14 18" style="display:block;"><line x1="1.4" y1="-2.5" x2="1.4" y2="4" stroke="#1C1508" stroke-width="0.6"/><line x1="3.2" y1="-2.5" x2="3.2" y2="4" stroke="#1C1508" stroke-width="0.6"/><line x1="0" y1="1.2" x2="4.6" y2="0.2" stroke="#1C1508" stroke-width="0.9"/><line x1="0" y1="2.8" x2="4.6" y2="1.8" stroke="#1C1508" stroke-width="0.9"/><line x1="5.4" y1="5" x2="5.4" y2="11.5" stroke="#1C1508" stroke-width="0.6"/><line x1="7.2" y1="5" x2="7.2" y2="11.5" stroke="#1C1508" stroke-width="0.6"/><line x1="4" y1="8.7" x2="8.6" y2="7.7" stroke="#1C1508" stroke-width="0.9"/><line x1="4" y1="10.3" x2="8.6" y2="9.3" stroke="#1C1508" stroke-width="0.9"/><line x1="9.4" y1="-4" x2="9.4" y2="2.5" stroke="#1C1508" stroke-width="0.6"/><line x1="11.2" y1="-4" x2="11.2" y2="2.5" stroke="#1C1508" stroke-width="0.6"/><line x1="8" y1="-0.3" x2="12.6" y2="-1.3" stroke="#1C1508" stroke-width="0.9"/><line x1="8" y1="1.3" x2="12.6" y2="0.3" stroke="#1C1508" stroke-width="0.9"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp" id="barlineGrp">
-    <button class="btn" id="barlineBtn" data-mode="barline" style="padding:2px 2px;position:relative;" title="bar line"><svg id="barlineBtnIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="6.4" y="4.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="7.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="10.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="13.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="16.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="13.6" y="4.8" width="0.7" height="12.5" fill="#1C1508"/></svg></button>
+    <button class="btn" id="barlineBtn" data-mode="barline" style="padding:2px 2px;position:relative;" title="Bar Line"><svg id="barlineBtnIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="display:block;"><rect x="6.4" y="4.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="7.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="10.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="13.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="6.4" y="16.8" width="7.3" height="0.5" fill="#1C1508"/><rect x="13.6" y="4.8" width="0.7" height="12.5" fill="#1C1508"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp">
-    <button class="btn" data-mode="text" style="padding:2px 5px;font-size:13px;font-family:Georgia,serif;font-style:italic;letter-spacing:-0.5px;" id="textModeBtn" title="text label">T</button>
+    <button class="btn" data-mode="text" style="padding:2px 5px;font-size:13px;font-family:Georgia,serif;font-style:italic;letter-spacing:-0.5px;" id="textModeBtn" title="Text Label">T</button>
   </div>
   <!-- Row break (desktop/iPad only) -->
   <div class="desktop-break" style="width:100%;height:0;margin:2px 0;flex-basis:100%;"></div>
   <!-- Row 2: selection and utility tools -->
   <div id="penCluster" style="display:inline-flex;align-items:center;background:var(--pen-cluster-bg);border:0.5px solid var(--pen-cluster-border);border-radius:11px;overflow:hidden;height:40px;padding:0 2px;box-shadow:var(--grp-shadow);">
-    <button id="penBtn" data-mode="draw-medium" class="btn btn-circle" style="flex-shrink:0;position:relative;" title="pen">
+    <button id="penBtn" data-mode="draw-medium" class="btn btn-circle" style="flex-shrink:0;position:relative;" title="Pen">
       <svg id="penIcon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" style="display:block;">
         <g transform="translate(11,11) rotate(40)" fill="#1C1508"><rect x="-2.5" y="-9" width="5" height="10.5" rx="0.7"/><polygon points="-2.5,1.5 2.5,1.5 0.8,7.5 -0.8,7.5"/><rect x="-0.6" y="7.5" width="1.2" height="2"/></g>
       </svg>
       <span id="penColorDot" style="display:none;position:absolute;bottom:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#1C1508;border:1px solid rgba(255,255,255,0.4);"></span>
     </button>
     <div id="penControls" style="display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0 4px;height:36px;width:38px;">
-      <label style="display:flex;align-items:center;justify-content:center;cursor:pointer;align-self:stretch;" title="smoothing">
+      <label style="display:flex;align-items:center;justify-content:center;cursor:pointer;align-self:stretch;" title="Smoothing">
         <input type="checkbox" id="smoothBtn" style="display:none;"/>
         <span id="smoothTrack" style="width:100%;height:15px;border-radius:8px;background:#D8D0C8;border:0.5px solid #B0A898;position:relative;display:block;transition:background .15s;overflow:hidden;flex-shrink:0;">
           <svg class="smooth-off" viewBox="0 0 26 15" style="position:absolute;top:0;left:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
@@ -614,12 +623,12 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
     </div>
     <div id="penColors" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 3px;height:36px;">
       <div style="display:flex;gap:3px;">
-        <span class="pen-color on" data-pencolor="#1C1508" title="black" style="width:12px;height:12px;border-radius:50%;background:#1C1508;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
-        <span class="pen-color" data-pencolor="#CC3333" title="red" style="width:12px;height:12px;border-radius:50%;background:#CC3333;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
+        <span class="pen-color on" data-pencolor="#1C1508" title="Black" style="width:12px;height:12px;border-radius:50%;background:#1C1508;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
+        <span class="pen-color" data-pencolor="#CC3333" title="Red" style="width:12px;height:12px;border-radius:50%;background:#CC3333;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
       </div>
       <div style="display:flex;gap:3px;">
-        <span class="pen-color" data-pencolor="#2255AA" title="blue" style="width:12px;height:12px;border-radius:50%;background:#2255AA;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
-        <span class="pen-color" data-pencolor="#228833" title="green" style="width:12px;height:12px;border-radius:50%;background:#228833;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
+        <span class="pen-color" data-pencolor="#2255AA" title="Blue" style="width:12px;height:12px;border-radius:50%;background:#2255AA;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
+        <span class="pen-color" data-pencolor="#228833" title="Green" style="width:12px;height:12px;border-radius:50%;background:#228833;cursor:pointer;border:1.5px solid transparent;box-sizing:border-box;"></span>
       </div>
     </div>
   </div>
@@ -631,26 +640,26 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
     <span class="pen-color-opt" data-penopt="#228833" style="width:28px;height:28px;border-radius:50%;background:#228833;cursor:pointer;border:2px solid transparent;box-sizing:border-box;"></span>
   </div>
   <div class="grp" id="eraseSelectGrp">
-    <button class="btn" data-mode="erase"  style="padding:2px 2px;" title="erase/delete"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></button>
-    <button class="btn" data-mode="select" style="padding:2px 2px;" title="select"><svg class="select-pointer" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 18 23" style="display:block;"><path d="M4.00,2.25 L4.00,17.25 L7.50,13.75 L10.20,20.75 L12.20,19.75 L9.50,12.75 L14.00,12.75 Z" fill="#1C1508" stroke="#1C1508" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"/></svg><svg class="select-finger" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M22 14a8 8 0 0 1-8 8"/><path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1"/><path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>
-    <!-- lasso button hidden but code preserved: <button class="btn" data-mode="lasso" style="padding:2px 2px;" title="select group"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M7 22a5 5 0 0 1-2-4"/><path d="M3.3 14A6.8 6.8 0 0 1 2 10c0-4.4 4.5-8 10-8s10 3.6 10 8-4.5 8-10 8a12 12 0 0 1-5-1"/><path d="M5 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg></button> -->
+    <button class="btn" data-mode="erase"  style="padding:2px 2px;" title="Erase/Delete"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></button>
+    <button class="btn" data-mode="select" style="padding:2px 2px;" title="Select"><svg class="select-pointer" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 18 23" style="display:block;"><path d="M4.00,2.25 L4.00,17.25 L7.50,13.75 L10.20,20.75 L12.20,19.75 L9.50,12.75 L14.00,12.75 Z" fill="#1C1508" stroke="#1C1508" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"/></svg><svg class="select-finger" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M22 14a8 8 0 0 1-8 8"/><path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1"/><path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>
+    <!-- lasso button hidden but code preserved: <button class="btn" data-mode="lasso" style="padding:2px 2px;" title="Select Group"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M7 22a5 5 0 0 1-2-4"/><path d="M3.3 14A6.8 6.8 0 0 1 2 10c0-4.4 4.5-8 10-8s10 3.6 10 8-4.5 8-10 8a12 12 0 0 1-5-1"/><path d="M5 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg></button> -->
   </div>
   <div class="sep"></div>
   <div class="grp" id="scrubMuteGrp">
-    <button class="btn btn-circle" data-mode="scrub" title="scrub play"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-1 0 24 24" fill="#2A7A3A" stroke="#2A7A3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg></button>
-    <button class="btn btn-circle" id="muteBtn" title="mute"><svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#1C1508" stroke="none"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
+    <button class="btn btn-circle" data-mode="scrub" title="Scrub Play"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-1 0 24 24" fill="#2A7A3A" stroke="#2A7A3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg></button>
+    <button class="btn btn-circle" id="muteBtn" title="Mute"><svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#1C1508" stroke="none"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp">
-    <button class="btn" id="copyBtn"  style="padding:2px 2px;" title="copy"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-    <button class="btn" id="pasteBtn" style="padding:2px 2px;" title="paste"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h4"/></svg></button>
-    <button class="btn" id="undoBtn"  style="padding:2px 2px;" title="undo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
-    <button class="btn" id="redoBtn"  style="padding:2px 2px;" title="redo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
-    <button class="btn" id="clearBtn" style="padding:2px 2px;" title="clear page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <button class="btn" id="copyBtn"  style="padding:2px 2px;" title="Copy"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+    <button class="btn" id="pasteBtn" style="padding:2px 2px;" title="Paste"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h4"/></svg></button>
+    <button class="btn" id="undoBtn"  style="padding:2px 2px;" title="Undo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
+    <button class="btn" id="redoBtn"  style="padding:2px 2px;" title="Redo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
+    <button class="btn" id="clearBtn" style="padding:2px 2px;" title="Clear Page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp">
-    <label class="grid-toggle" title="grid" id="gridLabel">
+    <label class="grid-toggle" title="Grid" id="gridLabel">
       <input type="checkbox" id="gridBtn"/>
       <span class="track">
         <svg class="grid-off" width="28" height="16" style="position:absolute;top:0;left:0;" xmlns="http://www.w3.org/2000/svg">
@@ -665,7 +674,11 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   </div>
   <div class="sep"></div>
   <div class="grp">
-    <button class="btn" id="utilBtn" style="padding:2px 4px;position:relative;" title="more"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
+    <button class="btn" id="exportBtn" style="padding:2px 4px;position:relative;" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
+  </div>
+  <div class="sep"></div>
+  <div class="grp">
+    <button class="btn" id="utilBtn" style="padding:2px 4px;position:relative;" title="More"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
     <input type="file" id="loadFileInput" accept=".mnb,.cnb,.json" style="display:none;"/>
   </div>
 </div>
@@ -710,29 +723,29 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
       <option value="48">48</option>
     </select>
     <div class="tb-sep"></div>
-    <button class="fmt-btn" id="btnTextBold"   title="bold"><b>B</b></button>
-    <button class="fmt-btn" id="btnTextItalic" title="italic"><i>I</i></button>
-    <button class="fmt-btn" id="btnTextUnderline" title="underline"><u>U</u></button>
+    <button class="fmt-btn" id="btnTextBold"   title="Bold"><b>B</b></button>
+    <button class="fmt-btn" id="btnTextItalic" title="Italic"><i>I</i></button>
+    <button class="fmt-btn" id="btnTextUnderline" title="Underline"><u>U</u></button>
     <div class="tb-sep"></div>
     <div id="textColorPicker">
       <div style="display:flex;gap:2px;">
-        <span class="text-color on" data-textcolor="#1C1508" title="black"  style="background:#1C1508;"></span>
-        <span class="text-color"    data-textcolor="#CC3333" title="red"    style="background:#CC3333;"></span>
+        <span class="text-color on" data-textcolor="#1C1508" title="Black"  style="background:#1C1508;"></span>
+        <span class="text-color"    data-textcolor="#CC3333" title="Red"    style="background:#CC3333;"></span>
       </div>
       <div style="display:flex;gap:2px;">
-        <span class="text-color"    data-textcolor="#2255AA" title="blue"   style="background:#2255AA;"></span>
-        <span class="text-color"    data-textcolor="#228833" title="green"  style="background:#228833;"></span>
+        <span class="text-color"    data-textcolor="#2255AA" title="Blue"   style="background:#2255AA;"></span>
+        <span class="text-color"    data-textcolor="#228833" title="Green"  style="background:#228833;"></span>
       </div>
     </div>
   </div>
   <div id="pageNav">
-    <button class="pn-btn" id="navPrev" title="previous page"><svg width="10" height="10" viewBox="0 0 10 10"><polygon points="1,5 7,1 7,9" fill="#1C1508"/></svg></button>
+    <button class="pn-btn" id="navPrev" title="Previous Page"><svg width="10" height="10" viewBox="0 0 10 10"><polygon points="1,5 7,1 7,9" fill="#1C1508"/></svg></button>
     <div id="pageDots" role="navigation" aria-label="Page selector"></div>
-    <button class="pn-btn" id="navNext" title="next page"><svg width="10" height="10" viewBox="0 0 10 10"><polygon points="9,5 3,1 3,9" fill="#1C1508"/></svg></button>
+    <button class="pn-btn" id="navNext" title="Next Page"><svg width="10" height="10" viewBox="0 0 10 10"><polygon points="9,5 3,1 3,9" fill="#1C1508"/></svg></button>
   </div>
   <span id="pageNum">1</span>
   <div id="bookmarkLabel" aria-hidden="true"><div class="bl-title"></div><div class="bl-date"></div></div>
-  <button id="bookmarkBtn" title="bookmark page" aria-label="Bookmark page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18"><path class="fill" d="M3 1 v15 l5 -3.5 l5 3.5 V1 z"/></svg></button>
+  <button id="bookmarkBtn" title="Bookmark Page" aria-label="Bookmark page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18"><path class="fill" d="M3 1 v15 l5 -3.5 l5 3.5 V1 z"/></svg></button>
   <div id="bookmarkPopover" role="dialog" aria-label="Bookmark details">
     <input type="text" class="bp-title" placeholder="Title" maxlength="80" />
     <label class="bp-date-row">
@@ -742,7 +755,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
     <textarea class="bp-notes" placeholder="Notes" rows="3" maxlength="500"></textarea>
     <button class="bp-remove" type="button">Remove Bookmark</button>
   </div>
-  <button id="addPage" title="add page">+</button>
+  <button id="addPage" title="Add Page">+</button>
   <div id="addPageMenu" style="display:none;position:absolute;background:rgba(248,243,231,0.98);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:0.5px solid rgba(0,0,0,0.18);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.15);z-index:99999;padding:4px;flex-direction:column;gap:0;min-width:140px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#1C1508;">
     <button class="ap-opt" data-orient="portrait" type="button" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:transparent;border:none;font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border-radius:4px;text-align:left;width:100%;">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1" style="flex:none;"><rect x="2" y="1" width="10" height="14" rx="0.5"/><line x1="3.5" y1="5" x2="10.5" y2="5"/><line x1="3.5" y1="7" x2="10.5" y2="7"/><line x1="3.5" y1="9" x2="10.5" y2="9"/><line x1="3.5" y1="11" x2="10.5" y2="11"/></svg>
@@ -1229,6 +1242,14 @@ function historyPush() {
   if(history.length > 100) history.shift();
   redoStack = []; // new action clears redo
 }
+// Discard the most recent history entry without applying it. Used when a
+// drag was armed (historyPush() was called pre-emptively on mousedown)
+// but the cursor never moved past the dead-zone threshold — there's
+// nothing to undo, so the entry would just be a no-op cluttering the
+// undo stack.
+function historyPopIfNoOp(){
+  if(history.length > 0) history.pop();
+}
 
 // ── Select tool state ────────────────────────────────────────────────────
 // sel = { type:'note'|'stem'|'barline', id }
@@ -1238,6 +1259,15 @@ let selDragOrig = null;  // original state snapshot when drag started (for cance
 let selDragStart= null;  // {x,y} logical pos at mousedown
 let lassoMoved  = false; // true if lasso group drag moved — gates historyPush() on mouseup
 let beamExtendDrag = null; // {beam, whichEnd:'stemId1'|'stemId2', origStemId} while extending a beam endpoint
+// Drag dead-zone: when selDragging is armed (mouse/pencil down on a
+// selected item), suppress actual movement until the cursor has traveled
+// past _dragThreshold logical px from selDragStart. This absorbs the
+// hand-tremor wiggle that's especially noticeable with Apple Pencil.
+// _dragMoved flips to true once the threshold is crossed; if drag ends
+// without ever flipping, we revert the history push that was made on
+// mousedown so the undo stack doesn't accumulate no-op entries.
+let _dragMoved = false;
+const _dragThreshold = 3; // logical px — small enough not to feel laggy on intentional drags
 const SEL_COL = '#8B1A2F'; // burgundy red for selected items
 
 // ── Multi-select (lasso) state ───────────────────────────────────────────
@@ -1672,23 +1702,22 @@ function resize(){
     // iPhone: read the frame's actual rendered width — never exceeds screen
     const frame = document.querySelector('.frame');
     baseW = frame.clientWidth || Math.min(availW, window.innerWidth);
-  } else if(_isLandscapeTablet && !_curPageLandscape){
-    // iPad landscape with a PORTRAIT page: fill the available vertical
-    // space — same approach as a landscape page on iPad-landscape, just
-    // computed off the portrait aspect ratio. Width is constrained by
-    // whichever axis is tighter (usually height on iPad-landscape).
-    baseW = Math.min(availW, availH * LW / LH);
-  } else if(_isLandscapeTablet && _curPageLandscape){
-    // iPad landscape with a LANDSCAPE page: fill the available vertical
-    // space rather than matching portrait's smaller scale. iPad landscape
-    // is the natural use case for landscape pages — there's room, and
-    // shrinking the page to portrait-equivalent size wastes it.
+  } else if(_isTouch){
+    // iPad (any orientation, any page orientation): fit-to-viewport. The
+    // page fills whichever axis is tighter given its aspect ratio. This
+    // gives the most paper at zoom 1.0 across all four combinations:
+    //   - portrait device + portrait page: fills height (page taller than 1:1)
+    //   - portrait device + landscape page: fills width
+    //   - landscape device + portrait page: fills height
+    //   - landscape device + landscape page: fills height
     baseW = Math.min(availW, availH * LW / LH);
   } else {
-    // Desktop, iPad portrait: use the page's LONG side as the reference
-    // so portrait and landscape pages render at the same physical scale.
-    // They're the same piece of paper just oriented differently. longSide
-    // is 900 for both (portrait LH=900, landscape LW=900).
+    // Desktop: use the page's LONG side as the reference so portrait and
+    // landscape pages render at the same physical scale. They're the same
+    // piece of paper just oriented differently. longSide is 900 for both
+    // (portrait LH=900, landscape LW=900). On desktop you might switch a
+    // single page between orientations frequently and consistent scaling
+    // matters; on iPad the pattern is "rotate the device, fill the screen."
     const longSide = Math.max(LW, LH);
     const scale = Math.min(availW / longSide, availH / longSide);
     baseW = LW * scale;
@@ -4114,7 +4143,7 @@ function notationDown(x,y){
         // currently-rendered values so the drag begins without a visible jump.
         commitBeamSlantToVisual(selStem.id);
         // Start tip drag for angle adjustment (works for both beamed and unbeamed stems)
-        selDragging=true;
+        selDragging=true;_dragMoved=false;
         selDragStart={x,y};
         selDragOrig={y2:selStem.y2, y1:selStem.y1, up:selStem.y2<selStem.y1};
         render();return;
@@ -4141,7 +4170,7 @@ function notationDown(x,y){
       commitBeamSlantToVisual(hitTip.id);
       sel={type:'stemTip',id:hitTip.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={y2:hitTip.y2, y1:hitTip.y1, up:hitTip.y2<hitTip.y1};
       render();return;
@@ -4164,7 +4193,7 @@ function notationDown(x,y){
             const yAtX=visualStemTipY(_bL1)+_t1*(visualStemTipY(_bR1)-visualStemTipY(_bL1));
             if(Math.abs(y-yAtX)<BEAM_H*2+LS*1.5){
               historyPush();
-              selDragging=true;
+              selDragging=true;_dragMoved=false;
               selDragStart={x,y};
               selDragOrig={members:members.map(s=>({id:s.id,y1:s.y1,y2:s.y2,up:s.y2<s.y1}))};
               render();return;
@@ -4202,7 +4231,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'beam',id:primaryBeam.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={members:members.map(s=>({id:s.id,y1:s.y1,y2:s.y2,up:s.y2<s.y1}))};
       render();return;
@@ -4219,7 +4248,7 @@ function notationDown(x,y){
         if(hitTieEnd){
           historyPush();
           sel={type:'tieEnd', id:hitTieEnd.id, end:hitTieEndWhich};
-          selDragging=true; selDragStart={x,y};
+          selDragging=true;_dragMoved=false; selDragStart={x,y};
           selDragOrig={x1off:hitTieEnd.x1off||0, y1off:hitTieEnd.y1off||0,
                        x2off:hitTieEnd.x2off||0, y2off:hitTieEnd.y2off||0};
           render(); return;
@@ -4242,7 +4271,7 @@ function notationDown(x,y){
     if(hitTie){
       historyPush();
       sel={type:'tie', id:hitTie.id};
-      selDragging=true; selDragStart={x,y};
+      selDragging=true;_dragMoved=false; selDragStart={x,y};
       selDragOrig={x1off:hitTie.x1off||0, y1off:hitTie.y1off||0,
                    x2off:hitTie.x2off||0, y2off:hitTie.y2off||0};
       render(); return;
@@ -4261,7 +4290,7 @@ function notationDown(x,y){
     if(hitAcc){
       historyPush();
       sel={type:'accidental',id:hitAcc.id};
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={accXOff:accXOffFor(hitAcc)};
       render();return;
@@ -4280,7 +4309,7 @@ function notationDown(x,y){
       const staffNotes=notes.filter(n=>n.si===hitNote.si);
       const groups=chordsOnStaff(staffNotes);
       const group=groups.find(g=>g.some(n=>n.id===hitNote.id))||[hitNote];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={
         x:hitNote.x, slot:hitNote.slot, si:hitNote.si,
@@ -4302,7 +4331,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'clef',id:hitClef.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x:hitClef.x,si:hitClef.si};
       render();return;
@@ -4317,7 +4346,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'rest',id:hitRest.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x:hitRest.x,slot:hitRest.slot,si:hitRest.si};
       render();return;
@@ -4333,7 +4362,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'keysig',id:hitKs.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x:hitKs.x,si:hitKs.si};
       render();return;
@@ -4350,7 +4379,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'stem',id:hitStem.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x:hitStem.x,y1:hitStem.y1,y2:hitStem.y2};
       render();return;
@@ -4366,7 +4395,7 @@ function notationDown(x,y){
     if(hitBlEnd){
       historyPush();
       sel={type:'barlineEnd',id:hitBlEnd.id,end:hitBlEndType};
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x:hitBlEnd.x,y1:hitBlEnd.y1,y2:hitBlEnd.y2,s1:hitBlEnd.s1,s2:hitBlEnd.s2};
       render();return;
@@ -4382,7 +4411,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'barline',id:hitBl.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x:hitBl.x,y1:hitBl.y1,y2:hitBl.y2,s1:hitBl.s1,s2:hitBl.s2};
       render();return;
@@ -4395,14 +4424,14 @@ function notationDown(x,y){
         if(Math.hypot(x-h.x1,y-h.y)<HP_END_R){
           historyPush();
           sel={type:'hairpinEnd',id:h.id,end:'x1'};
-          selDragging=true;selDragStart={x,y};
+          selDragging=true;_dragMoved=false;selDragStart={x,y};
           selDragOrig={x1:h.x1,y:h.y,x2:h.x2};
           render();return;
         }
         if(Math.hypot(x-h.x2,y-h.y)<HP_END_R){
           historyPush();
           sel={type:'hairpinEnd',id:h.id,end:'x2'};
-          selDragging=true;selDragStart={x,y};
+          selDragging=true;_dragMoved=false;selDragStart={x,y};
           selDragOrig={x1:h.x1,y:h.y,x2:h.x2};
           render();return;
         }
@@ -4424,7 +4453,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'hairpin',id:hitHp.id};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={x1:hitHp.x1, y:hitHp.y, x2:hitHp.x2};
       render();return;
@@ -4449,14 +4478,14 @@ function notationDown(x,y){
         if(Math.hypot(cx2-p0.x, cy2-p0.y) < endHitR){
           historyPush();
           sel={type:'strokeEnd', id:sel.id, end:'first'};
-          selDragging=true; selDragStart={x,y};
+          selDragging=true;_dragMoved=false; selDragStart={x,y};
           selDragOrig={origPts: st.pts.map(p=>({...p}))};
           render();return;
         }
         if(Math.hypot(cx2-pN.x, cy2-pN.y) < endHitR){
           historyPush();
           sel={type:'strokeEnd', id:sel.id, end:'last'};
-          selDragging=true; selDragStart={x,y};
+          selDragging=true;_dragMoved=false; selDragStart={x,y};
           selDragOrig={origPts: st.pts.map(p=>({...p}))};
           render();return;
         }
@@ -4469,7 +4498,7 @@ function notationDown(x,y){
       if(x>=tl.x&&x<=tl.x+tl.w&&y>=tl.y&&y<=tl.y+_h){
         sel={type:'textLabel',id:tl.id};
         selSet=[];
-        selDragging=true; selDragStart={x,y};
+        selDragging=true;_dragMoved=false; selDragStart={x,y};
         selDragOrig={x:tl.x,y:tl.y};
         render();return;
       }
@@ -4484,7 +4513,7 @@ function notationDown(x,y){
       historyPush();
       sel={type:'stroke', id:hitStrokeIdx};
       selSet=[];
-      selDragging=true;
+      selDragging=true;_dragMoved=false;
       selDragStart={x,y};
       selDragOrig={
         origPts: allStrokes[hitStrokeIdx].pts.map(p=>({...p})),
@@ -4759,6 +4788,14 @@ function notationMove(x,y){
   }
   if(mode==='select'&&selDragging&&sel&&selDragStart){
     const dx=x-selDragStart.x, dy=y-selDragStart.y;
+    // Dead-zone: suppress drag application until the cursor has moved past
+    // _dragThreshold logical px. Once crossed, _dragMoved sticks true for
+    // the rest of this drag (so micro-movements back inside the threshold
+    // still count as drag motion).
+    if(!_dragMoved){
+      if(Math.hypot(dx, dy) < _dragThreshold) return;
+      _dragMoved = true;
+    }
     if(sel.type==='stroke'){
       // origPts are in CSS-px-at-refW. Convert logical dx/dy into the stroke's
       // own CSS-px frame (not the current cssW frame).
@@ -5366,6 +5403,11 @@ function notationUp(x,y){
       beamExtendDrag=null;
       beamGhostEnd=null;
     }
+    // If the drag never moved past the dead-zone threshold, the user just
+    // tap-clicked on the selected item without intending to drag. Pop the
+    // pre-emptive history entry that was pushed on mousedown so the undo
+    // stack stays clean.
+    if(selDragging && !_dragMoved) historyPopIfNoOp();
     selDragging=false;
     selDragOrig=null;
     selDragStart=null;
@@ -5745,7 +5787,7 @@ cv.addEventListener('mouseleave',()=>{
   if(dashDragging){dashDragging=false;dashStart=null;beamGhostEnd=null;}
   eraseHeld=false;
   scrubHeld=false; scrubPlayed=new Set(); scrubLastX=null; scrubDir=0;
-  if(selDragging){selDragging=false;selDragOrig=null;selDragStart=null;beamExtendDrag=null;beamGhostEnd=null;}
+  if(selDragging){if(!_dragMoved) historyPopIfNoOp();selDragging=false;selDragOrig=null;selDragStart=null;beamExtendDrag=null;beamGhostEnd=null;}
   if(lassoGroupDrag){lassoGroupDrag=false;lassoGroupStart=null;lassoGroupOrig=null;}
   if(rectSelecting){rectSelecting=false;rectSelStart=null;beamGhostEnd=null;}
   clefGhost=null; restGhost=null; keySigGhost=null; textGhost=null; textDragStart=null; _clefJustPlaced=false;
@@ -7214,9 +7256,14 @@ function restoreSaveData(data){
 }
 
 // ── Utility menu (save/open/export/print) ────────────────────────────────
-(()=>{
-  const btn = document.getElementById('utilBtn');
-  const menu = document.getElementById('utilMenu');
+// Wire up dropdown menus that hang off a toolbar button (utilMenu and
+// exportMenu). Both behave identically: click the button to toggle, click
+// outside to close, click an item inside to close (except toggle items
+// that stay open while the user flips them on/off).
+function _wireDropdownMenu(btnId, menuId, toggleIds){
+  const btn = document.getElementById(btnId);
+  const menu = document.getElementById(menuId);
+  if(!btn || !menu) return;
   function showMenu(){
     const r = btn.getBoundingClientRect();
     menu.style.left = '0';
@@ -7233,6 +7280,10 @@ function restoreSaveData(data){
   function hideMenu(){ menu.classList.remove('show'); }
   btn.addEventListener('click', ()=>{
     if(menu.classList.contains('show')){ hideMenu(); return; }
+    // Close any other open dropdowns before opening this one.
+    document.querySelectorAll('#utilMenu.show, #exportMenu.show').forEach(m=>{
+      if(m !== menu) m.classList.remove('show');
+    });
     showMenu();
   });
   // Close on click/tap outside
@@ -7242,12 +7293,14 @@ function restoreSaveData(data){
   document.addEventListener('touchstart', e=>{
     if(menu.classList.contains('show') && !menu.contains(e.target) && !btn.contains(e.target)) hideMenu();
   }, {passive:true});
-  // Close menu when any item inside is clicked (except toggles)
-  const toggleIds = new Set(['themeBtn','watermarkBtn','accCarryBtn']);
+  // Close menu when any item inside is clicked (except toggles, which stay open)
+  const toggleSet = new Set(toggleIds || []);
   menu.querySelectorAll('.btn').forEach(item=>{
-    if(!toggleIds.has(item.id)) item.addEventListener('click', ()=> hideMenu());
+    if(!toggleSet.has(item.id)) item.addEventListener('click', ()=> hideMenu());
   });
-})();
+}
+_wireDropdownMenu('utilBtn', 'utilMenu', ['themeBtn','watermarkBtn','accCarryBtn']);
+_wireDropdownMenu('exportBtn', 'exportMenu', []);
 
 // ── Save to file ────────────────────────────────────────────────────────
 document.getElementById('saveBtn').addEventListener('click',()=>{
