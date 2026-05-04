@@ -28,17 +28,18 @@
   :root {
     --n: 2;
     --manual-gap: 12px;
-    /* Vertical reservation for the sustain bar below the manuals: bar
-       height is 1.5 × --ctrl-w (≈ 0.75 × key-w with a 48px floor) plus a
-       manual-gap/2 top margin and the divider line. 60px is a safe
-       upper bound that keeps everything on-screen on iPhone landscape. */
-    /* Vertical reservations for the rows that flank the manuals:
-       - top-row (clip buttons): ~52px (1.5 × ctrl-w with 32px floor)
-       - bottom-row (sustain bar): ~52px
-       - plus dividers/breathing room
-       60px each, conservative upper bounds. */
-    --top-reserve: 60px;
-    --sustain-reserve: 60px;
+    /* Vertical reservations for the rows that flank the manuals.
+       Each row has height max(44px, key-w * 0.75) and the .device flex
+       gap adds clamp(8px, key-w * 0.18, 24px) above and below. The
+       reserve must accommodate row + gap; on very large screens it's a
+       partial under-reservation that's compensated by the flex layout
+       (justify-content: center allows mild overflow distribution). 90px
+       is a good balance: gives keys enough vertical room on iPad / mid-
+       size laptops while keeping rows visually fitting on huge monitors
+       (where the slight imperfection is invisible against the keyboard's
+       overall bigger footprint). */
+    --top-reserve: 90px;
+    --sustain-reserve: 90px;
     --avail-per-manual: calc((96vh - 28px - var(--top-reserve) - var(--sustain-reserve) - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
     --max-key-h: calc((var(--avail-per-manual) - 13px) / 2);
     --max-key-w-from-h: calc(var(--max-key-h) * 7 / 15);
@@ -48,7 +49,7 @@
        + 14 gaps × (0.07 × key-w) ≈ 15.98 × key-w. So the full row needs
        ≈ 16.48 × key-w + 24px, and key-w ≤ (100vw − 24) / 16.48. */
     --max-key-w-from-w: calc((100vw - 24px) / 16.48);
-    --key-w: clamp(26px, min(var(--max-key-w-from-w), var(--max-key-w-from-h)), 96px);
+    --key-w: clamp(26px, min(var(--max-key-w-from-w), var(--max-key-w-from-h)), 140px);
     --gap: max(3px, calc(var(--key-w) * 0.07));
     --subcol: calc((var(--key-w) - var(--gap)) / 2);
     --key-h: calc(var(--key-w) * 15 / 7);
@@ -94,12 +95,21 @@
     z-index: 1;
     max-width: 100vw;
     max-height: 96vh;
-    height: 96vh;
+    /* Don't force the device to 96vh — let it size to content. When
+       keys hit their maximum size, the device will be smaller than the
+       viewport, and the body's flex centering positions the whole thing
+       comfortably. Forcing 96vh-tall meant any remaining vertical space
+       had to be distributed somewhere, which caused the top row to drift
+       up on big screens. */
     padding: 14px 8px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    /* Pack contents instead of distributing. */
+    justify-content: center;
     align-items: stretch;
+    /* Inter-section breathing room — scales with key-w so it stays
+       proportional to the keyboard. */
+    gap: clamp(8px, calc(var(--key-w) * 0.18), 24px);
   }
 
   /* Wrapper for the two stacked manuals. Keeps them packed together
@@ -544,8 +554,12 @@
      (red), loaded (bright white), playing (green). Number and edge glow
      share the state's color. */
   .clip-btn {
-    width: calc(var(--ctrl-w) * 1.5);
-    height: calc(var(--ctrl-w) * 1.5);
+    /* Proportional to key-w directly so the buttons stay at a fixed
+       ratio against the keys at every screen size. The min() floor of
+       44px ensures tappability on small screens where key-w bottoms
+       out at 26px (which would otherwise give ~20px buttons). */
+    width: max(44px, calc(var(--key-w) * 0.75));
+    height: max(44px, calc(var(--key-w) * 0.75));
     border: none;
     border-radius: 7px;
     cursor: pointer;
@@ -623,8 +637,10 @@
      chord symbol itself, so font-size must scale down a touch from the
      clip buttons' single-digit numbers to fit symbols like "Cmaj7". */
   .chord-btn {
-    width: calc(var(--ctrl-w) * 1.5);
-    height: calc(var(--ctrl-w) * 1.5);
+    /* Same proportional sizing as clip-btn so the two banks stay
+       balanced as the viewport scales. */
+    width: max(44px, calc(var(--key-w) * 0.75));
+    height: max(44px, calc(var(--key-w) * 0.75));
     border: none;
     border-radius: 50%;
     cursor: pointer;
@@ -695,6 +711,57 @@
       0 0 0 0.5px rgba(0,0,0,0.5),
       0 0 6px rgba(60, 230, 110, 0.85),
       0 0 14px rgba(60, 230, 110, 0.4);
+  }
+
+  /* === CHORD LOCK TOGGLE === */
+  /* Subtle inline padlock glyph — text-sized, no chiclet around it.
+     Sits at the end of the chord group as a quiet utility control.
+     Idle = unlocked = cool slate-blue; active = locked = warm amber.
+     The SVG has two shackle paths; CSS shows the open one when
+     unlocked, the closed one when locked. */
+  .chord-lock-btn {
+    /* No background, no border — just a glyph. Sized to roughly match
+       the chord-pad button labels visually. */
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Glyph size — same height as the chord-pad font cap. */
+    width: clamp(12px, calc(var(--key-w) * 0.22), 18px);
+    height: clamp(12px, calc(var(--key-w) * 0.22), 18px);
+    color: rgba(225, 235, 255, 0.4);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: color 0.06s, filter 0.06s;
+    flex-shrink: 0;
+  }
+  .chord-lock-btn:active {
+    color: rgba(225, 235, 255, 0.8);
+  }
+  .chord-lock-btn svg {
+    width: 100%;
+    height: 100%;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 2px rgba(170, 200, 255, 0.25));
+  }
+  /* Glyph reflects current state: open shackle when unlocked, closed
+     when locked. */
+  .chord-lock-btn .lock-shackle-closed { display: none; }
+  .chord-lock-btn .lock-shackle-open { display: inline; }
+  .chord-lock-btn.locked .lock-shackle-closed { display: inline; }
+  .chord-lock-btn.locked .lock-shackle-open { display: none; }
+
+  /* Locked = warm amber, mirrors the locked sustain bar */
+  .chord-lock-btn.locked {
+    color: rgba(255, 175, 80, 0.95);
+  }
+  .chord-lock-btn.locked svg {
+    filter: drop-shadow(0 0 3px rgba(255, 120, 30, 0.55));
   }
 
   /* === CLIP DIALOG === */
@@ -821,9 +888,9 @@
   .panic-btn {
     position: absolute;
     /* Vertical center: device padding-bottom (14px) + half the bottom
-       row's height (= 0.75 × ctrl-w). transform: translateY(50%)
-       centers the text on that line. */
-    bottom: calc(14px + 0.75 * var(--ctrl-w));
+       row's height (= 0.5 × max(44px, key-w * 0.75)). transform:
+       translateY(50%) centers the text on that line. */
+    bottom: calc(14px + 0.5 * max(44px, calc(var(--key-w) * 0.75)));
     transform: translateY(50%);
     right: 0;
     background: transparent;
@@ -862,7 +929,7 @@
      .bottom-row alongside the clip buttons. */
   .sustain-bar {
     width: calc(var(--key-w) * 8);
-    height: calc(var(--ctrl-w) * 1.5);
+    height: max(44px, calc(var(--key-w) * 0.75));
     position: relative;
     background: #3a2f23;
     border: none;
@@ -1214,6 +1281,40 @@
     for (let i = 0; i < NUM_CHORDS; i++) {
       chordGroup.buttons.appendChild(makeChordButton(i));
     }
+    // Lock toggle — sits to the right of the chord pads, inside their
+    // group so the CHORDS label encompasses the whole bank. When locked,
+    // long-press on a chord pad is suppressed (play-only mode); when
+    // unlocked, long-press opens the export/delete dialog.
+    const lockBtn = document.createElement('button');
+    lockBtn.className = 'chord-lock-btn';
+    lockBtn.setAttribute('aria-label', 'Lock chord pads (disable menu access)');
+    lockBtn.setAttribute('aria-pressed', 'false');
+    // Padlock glyph using SVG so it scales sharply at any size and we
+    // can swap the shackle path between open and closed states without
+    // font-dependence. Two paths (closed and open shackle); CSS hides
+    // the inactive one.
+    lockBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect class="lock-body" x="5" y="11" width="14" height="9" rx="1.5"/>
+        <path class="lock-shackle-closed" d="M8 11V7a4 4 0 0 1 8 0v4"/>
+        <path class="lock-shackle-open" d="M8 11V7a4 4 0 0 1 8 0"/>
+      </svg>`;
+    lockBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      chordsLocked = !chordsLocked;
+      lockBtn.classList.toggle('locked', chordsLocked);
+      lockBtn.setAttribute('aria-pressed', chordsLocked ? 'true' : 'false');
+    });
+    // Touch path — explicit so it works on iOS.
+    lockBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      chordsLocked = !chordsLocked;
+      lockBtn.classList.toggle('locked', chordsLocked);
+      lockBtn.setAttribute('aria-pressed', chordsLocked ? 'true' : 'false');
+    }, { passive: false });
+    chordGroup.buttons.appendChild(lockBtn);
+
     topRow.appendChild(chordGroup.group);
 
     device.appendChild(topRow);
@@ -1903,13 +2004,19 @@
     // click against the previous note's release tail.
     if (inst.setExpression) inst.setExpression(manualIdx, v, !manualHadOtherNotes);
 
-    // MIDI clip recording. Only capture live input (not events fired by
-    // clip playback itself, which use 'pb-...' touch ids).
-    if (typeof touchId !== 'string' || (!touchId.startsWith('pb-') && !touchId.startsWith('cd-'))) {
+    // MIDI clip recording. Exclude only clip playback ('pb-' touch ids)
+    // — recording its own playback would create a feedback loop. Chord-
+    // pad triggers ('cd-') are intentionally included so the user can
+    // record a clip by tapping chord pads, just like recording by
+    // playing the keys directly.
+    if (typeof touchId !== 'string' || !touchId.startsWith('pb-')) {
       captureEvent('on', manualIdx, note, v);
       // Also feed chord pads if one is armed. Chord-playback touchIds
-      // start with 'cd-' so we filter them out alongside clip playback.
-      chordCaptureNote(manualIdx, note, v);
+      // start with 'cd-' — we don't want a chord-pad trigger arming a
+      // chord pad to capture itself, so filter those.
+      if (typeof touchId !== 'string' || !touchId.startsWith('cd-')) {
+        chordCaptureNote(manualIdx, note, v);
+      }
     }
 
     // Visual feedback: highlight only the matching key on this manual,
@@ -1946,10 +2053,9 @@
         }
       }
     }
-    // MIDI clip recording. Only capture live input (not events fired by
-    // clip playback itself, which use 'pb-...' touch ids; or chord
-    // pad playback, which uses 'cd-...').
-    if (typeof touchId !== 'string' || (!touchId.startsWith('pb-') && !touchId.startsWith('cd-'))) {
+    // MIDI clip recording. Exclude only clip-playback echoes ('pb-');
+    // chord-pad triggers ('cd-') flow into the recording.
+    if (typeof touchId !== 'string' || !touchId.startsWith('pb-')) {
       captureEvent('off', manualIdx, note, 0);
     }
   }
@@ -2535,20 +2641,52 @@
     { iv: [0,4,8],    sfx: 'aug'  },
   ];
 
+  // Spell a pitch class according to a "use flats" preference. Common
+  // musical convention: roots in flat keys (D♭, E♭, A♭, B♭ in major;
+  // E♭m, A♭m, B♭m in minor) and their chord tones get flat spellings;
+  // roots in sharp/natural keys use sharps. The C♯/D♭ axis is the one
+  // place where major and minor diverge — D♭ major exists as a real
+  // key signature but D♭ minor doesn't, while C♯ minor is common but
+  // C♯ major is rare. So we lean flat for pc 1 only in a major context.
+  // F♯/G♭ stays sharp in both since F♯ is the more familiar root.
+  function useFlatsForRoot(rootPc, isMinor) {
+    // E♭(3), A♭(8), B♭(10) — flat-friendly in both major and minor
+    if (rootPc === 3 || rootPc === 8 || rootPc === 10) return true;
+    // D♭(1) — flat in major only; C♯ in minor
+    if (rootPc === 1 && !isMinor) return true;
+    return false;
+  }
+  function spellPc(pc, useFlat) {
+    return useFlat ? PC_NAMES_FLAT[pc] : PC_NAMES_SHARP[pc];
+  }
+
   // Render a list of pitches as space-separated note names, low to high,
-  // de-duplicated by pitch class. Used as the fallback whenever the input
-  // doesn't match a template.
-  function noteListSymbol(parsed) {
+  // de-duplicated by pitch class. useFlat controls whether accidentals
+  // are spelled as sharps or flats.
+  function noteListSymbol(parsed, useFlat) {
     const sorted = [...parsed].sort((a,b) => a.midi - b.midi);
     const seen = new Set();
     const labels = [];
     for (const p of sorted) {
       if (!seen.has(p.pc)) {
         seen.add(p.pc);
-        labels.push(PC_NAMES_SHARP[p.pc]);
+        labels.push(spellPc(p.pc, useFlat));
       }
     }
     return labels.join(' ');
+  }
+
+  // Choose a sensible spelling preference for an unrecognized note set:
+  // default to sharps, but flip to flats if the bass note is one of
+  // the flat-friendly pitch classes. Lets a cluster rooted on E♭ spell
+  // out as "E♭ G B♭ D" rather than "D♯ G A♯ D".
+  function defaultUseFlat(parsed) {
+    const bassMidi = parsed.reduce((min, p) => p.midi < min ? p.midi : min, Infinity);
+    const bassPc = ((bassMidi % 12) + 12) % 12;
+    // No chord context to tell major from minor — assume major for the
+    // pc-1 (C♯/D♭) edge case. Reasonable default since most listeners
+    // hear "D♭" before "C♯" when there's no minor-third evidence.
+    return useFlatsForRoot(bassPc, false);
   }
 
   // Try to match a sorted-unique pitch-class set to a template under
@@ -2559,9 +2697,10 @@
                         .filter(p => p.pc !== undefined && p.pc !== null);
     if (parsed.length === 0) return null;
 
-    // Single note — just the note name
+    // Single note — just the note name. Default to sharps; with no
+    // chord context there's no way to know the "correct" spelling.
     if (parsed.length === 1) {
-      return { symbol: PC_NAMES_SHARP[parsed[0].pc], bass: parsed[0].midi };
+      return { symbol: spellPc(parsed[0].pc, false), bass: parsed[0].midi };
     }
 
     const bassMidi = parsed.reduce((min, p) => p.midi < min ? p.midi : min, Infinity);
@@ -2572,7 +2711,7 @@
 
     // Two distinct pcs → no triad/7th can match → fall through to notes
     if (pcs.length < 3) {
-      return { symbol: noteListSymbol(parsed), bass: bassMidi };
+      return { symbol: noteListSymbol(parsed, defaultUseFlat(parsed)), bass: bassMidi };
     }
 
     // 3+ distinct pcs → try templates from most specific down. Match
@@ -2591,12 +2730,17 @@
     }
 
     if (bestMatch) {
-      const rootName = PC_NAMES_SHARP[bestMatch.rootPc];
-      return { symbol: rootName + bestMatch.tpl.sfx, bass: bassMidi };
+      // Detect whether the matched template is minor-quality so we can
+      // bias the C♯/D♭ axis correctly (C♯m, not D♭m).
+      const sfx = bestMatch.tpl.sfx;
+      const isMinor = sfx === 'm' || sfx === 'm7' || sfx === 'dim';
+      const useFlat = useFlatsForRoot(bestMatch.rootPc, isMinor);
+      const rootName = spellPc(bestMatch.rootPc, useFlat);
+      return { symbol: rootName + sfx, bass: bassMidi };
     }
 
-    // Anything else — list the notes
-    return { symbol: noteListSymbol(parsed), bass: bassMidi };
+    // Anything else — list the notes, with spelling driven by the bass
+    return { symbol: noteListSymbol(parsed, defaultUseFlat(parsed)), bass: bassMidi };
   }
 
   // === Chord persistence ===
@@ -2805,24 +2949,36 @@
   //   empty     → tap → arm (capture mode)
   //   armed     → tap → disarm (cancel)
   //   loaded    → press-and-hold → play while held, release on lift
-  //   loaded    → double-tap → open export/delete dialog
-  // Single-tap on a loaded pad still plays — it's a very short hold.
-  // Long-press is no longer used (it would conflict with sustained
-  // playback). Double-tap is detected by a second press-down arriving
-  // within DOUBLE_TAP_WINDOW_MS of the previous release.
-  const CHORD_DOUBLE_TAP_MS = 350;
-  const chordLastReleaseAt = new Array(NUM_CHORDS).fill(0);
+  //   loaded    → long-press past CHORD_LONG_PRESS_MS → open dialog
+  //               (chord automatically releases when the dialog opens)
+  //
+  // Long-press is suppressed when chordsLocked is true. The lock toggle
+  // sits to the right of the chord pads. Locked = play-only, no menu;
+  // unlocked = menu accessible via long-press.
+  const CHORD_LONG_PRESS_MS = 600;
+  let chordsLocked = false;
   // Track which slot each touch identifier is currently holding, so we
   // release the right slot on touchend/touchcancel and so the same finger
   // can't double-trigger.
   const chordHoldByTouch = new Map();
   // For mouse: a single 'mouse' identifier suffices.
   let chordHoldByMouse = -1;
+  // Per-slot long-press timer. Set when a hold starts (in unlocked mode);
+  // cancelled if the user lifts before the threshold; if it fires, the
+  // hold transitions into "menu open" — chord releases, dialog opens.
+  const chordLongPressTimers = new Array(NUM_CHORDS).fill(null);
 
   function attachChordHandlers(btn, slot) {
+    function clearLongPress() {
+      if (chordLongPressTimers[slot]) {
+        clearTimeout(chordLongPressTimers[slot]);
+        chordLongPressTimers[slot] = null;
+      }
+    }
+
     // Press-down logic, shared by mouse and touch. Returns true if the
     // press should be tracked as "holding the chord", false if it was
-    // consumed by another action (arming, double-tap, etc.).
+    // consumed by another action (arm/disarm).
     function press(touchIdent) {
       const state = chordState[slot];
       if (state === 'empty') {
@@ -2833,33 +2989,34 @@
         disarmChord();
         return false;
       }
-      // loaded or playing → check for double-tap
-      const now = nowMs();
-      if (now - chordLastReleaseAt[slot] < CHORD_DOUBLE_TAP_MS) {
-        // Double-tap: stop any in-progress playback and open the dialog.
-        // Reset the timestamp so a third quick tap doesn't open it again.
-        chordLastReleaseAt[slot] = 0;
-        stopChord(slot);
-        setChordState(slot, 'loaded');
-        openChordDialog(slot);
-        return false;
-      }
-      // Single press → start playing held. If something else is already
-      // holding this slot (e.g. multitouch second finger), ignore — one
-      // hold per slot at a time.
+      // loaded or playing → start a held playback. If something else is
+      // already holding this slot (multitouch second finger), ignore.
       if (chordHoldByMouse === slot) return false;
       for (const v of chordHoldByTouch.values()) if (v === slot) return false;
       startChordHold(slot);
+      // Schedule the long-press → open-dialog transition unless locked.
+      if (!chordsLocked) {
+        clearLongPress();
+        chordLongPressTimers[slot] = setTimeout(() => {
+          chordLongPressTimers[slot] = null;
+          // Release the chord and clear our hold-tracking state so the
+          // upcoming touchend/mouseup is a no-op (otherwise the user
+          // would feel a phantom release attempt). Then open the dialog.
+          stopChordHold(slot);
+          chordHoldByMouse = (chordHoldByMouse === slot) ? -1 : chordHoldByMouse;
+          for (const [tid, s] of chordHoldByTouch) {
+            if (s === slot) chordHoldByTouch.delete(tid);
+          }
+          openChordDialog(slot);
+        }, CHORD_LONG_PRESS_MS);
+      }
       return true;
     }
 
-    function release(touchIdent) {
-      // Only release if we're actually holding this slot for this touch.
-      // The chordLastReleaseAt timestamp is set whenever a hold ends so
-      // a subsequent press can detect a double-tap.
+    function release() {
+      clearLongPress();
       if (chordState[slot] === 'playing') {
         stopChordHold(slot);
-        chordLastReleaseAt[slot] = nowMs();
       }
     }
 
@@ -2870,8 +3027,8 @@
       const t = e.changedTouches[0];
       if (!t) return;
       // Only track this touch if it actually starts a hold; otherwise
-      // the press was consumed (arm/disarm/double-tap) and we don't
-      // need a touchend handler for it.
+      // the press was consumed (arm/disarm) and we don't need a
+      // touchend handler for it.
       if (press(t.identifier)) {
         chordHoldByTouch.set(t.identifier, slot);
       }
@@ -2882,7 +3039,7 @@
       for (const t of e.changedTouches) {
         if (chordHoldByTouch.get(t.identifier) === slot) {
           chordHoldByTouch.delete(t.identifier);
-          release(t.identifier);
+          release();
         }
       }
     }, { passive: false });
@@ -2891,7 +3048,7 @@
       for (const t of e.changedTouches) {
         if (chordHoldByTouch.get(t.identifier) === slot) {
           chordHoldByTouch.delete(t.identifier);
-          release(t.identifier);
+          release();
         }
       }
     }, { passive: false });
@@ -2913,15 +3070,21 @@
     if (chordHoldByMouse >= 0) {
       const slot = chordHoldByMouse;
       chordHoldByMouse = -1;
+      if (chordLongPressTimers[slot]) {
+        clearTimeout(chordLongPressTimers[slot]);
+        chordLongPressTimers[slot] = null;
+      }
       if (chordState[slot] === 'playing') {
         stopChordHold(slot);
-        chordLastReleaseAt[slot] = nowMs();
       }
     }
   });
   // Releasing focus (alt-tab, etc.) while held — cleanest to release
   // all held chords so we don't leave notes ringing.
   window.addEventListener('blur', () => {
+    chordLongPressTimers.forEach((id, i) => {
+      if (id) { clearTimeout(id); chordLongPressTimers[i] = null; }
+    });
     if (chordHoldByMouse >= 0) {
       const slot = chordHoldByMouse;
       chordHoldByMouse = -1;
