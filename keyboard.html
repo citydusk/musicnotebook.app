@@ -28,10 +28,27 @@
   :root {
     --n: 2;
     --manual-gap: 12px;
-    --avail-per-manual: calc((96vh - 28px - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
+    /* Vertical reservation for the sustain bar below the manuals: bar
+       height is 1.5 × --ctrl-w (≈ 0.75 × key-w with a 48px floor) plus a
+       manual-gap/2 top margin and the divider line. 60px is a safe
+       upper bound that keeps everything on-screen on iPhone landscape. */
+    /* Vertical reservations for the rows that flank the manuals:
+       - top-row (clip buttons): ~52px (1.5 × ctrl-w with 32px floor)
+       - bottom-row (sustain bar): ~52px
+       - plus dividers/breathing room
+       60px each, conservative upper bounds. */
+    --top-reserve: 60px;
+    --sustain-reserve: 60px;
+    --avail-per-manual: calc((96vh - 28px - var(--top-reserve) - var(--sustain-reserve) - calc((var(--n) - 1) * var(--manual-gap))) / var(--n));
     --max-key-h: calc((var(--avail-per-manual) - 13px) / 2);
     --max-key-w-from-h: calc(var(--max-key-h) * 7 / 15);
-    --key-w: clamp(26px, min(5.3vw, var(--max-key-w-from-h)), 76px);
+    /* Horizontal budget: viewport minus device padding (8px each side
+       = 16px) minus the OCT-control column (≈ 0.5 × key-w) and its 8px
+       gap to the keyboard. Keyboard itself = 15 naturals × key-w
+       + 14 gaps × (0.07 × key-w) ≈ 15.98 × key-w. So the full row needs
+       ≈ 16.48 × key-w + 24px, and key-w ≤ (100vw − 24) / 16.48. */
+    --max-key-w-from-w: calc((100vw - 24px) / 16.48);
+    --key-w: clamp(26px, min(var(--max-key-w-from-w), var(--max-key-w-from-h)), 96px);
     --gap: max(3px, calc(var(--key-w) * 0.07));
     --subcol: calc((var(--key-w) - var(--gap)) / 2);
     --key-h: calc(var(--key-w) * 15 / 7);
@@ -75,9 +92,20 @@
   .device {
     position: relative;
     z-index: 1;
-    max-width: 98vw;
+    max-width: 100vw;
     max-height: 96vh;
-    padding: 14px;
+    height: 96vh;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+  }
+
+  /* Wrapper for the two stacked manuals. Keeps them packed together
+     in the middle of the device while the top clip row and bottom
+     sustain bar anchor to the screen edges. */
+  .manuals-stack {
     display: flex;
     flex-direction: column;
     gap: var(--manual-gap);
@@ -224,18 +252,496 @@
     text-shadow: 0 0 4px rgba(75, 175, 225, 0.45), 0 0 1px rgba(190, 230, 255, 0.5);
   }
 
+  /* === UPPER CONTROLS === */
+  /* The empty top-right corner of the sharps grid (above the last B and
+     final C) houses two per-manual controls side by side: the instrument
+     toggle on the left, and a volume knob on the right. The container is
+     right-anchored so the knob's right edge aligns with the keyboard's
+     right edge, and both controls vertically center within the sharps
+     row (which is the height of a natural key). */
+  .upper-controls {
+    grid-row: 1;
+    grid-column: 28 / span 3;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: max(10px, calc(var(--key-w) * 0.2));
+    padding: 0;
+  }
+
+  .inst-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: max(2px, calc(var(--key-w) * 0.04));
+  }
+
+  /* Tiny labels above and below the track — bright when active, dim when
+     not. Same cool-white phosphor as the C-key labels. Clickable so
+     tapping the label flips the switch (the track itself is small). */
+  .inst-toggle .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(4.5px, calc(var(--key-w) * 0.085), 7px);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: rgba(225, 235, 255, 0.28);
+    text-shadow: 0 0 2px rgba(170, 200, 255, 0.15);
+    line-height: 1;
+    transition: color 0.1s, text-shadow 0.1s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .inst-toggle:has(.inst-switch:not(.synth)) .lbl-piano,
+  .inst-toggle:has(.inst-switch.synth) .lbl-synth {
+    color: rgba(240, 246, 255, 0.85);
+    text-shadow:
+      0 0 4px rgba(170, 200, 255, 0.5),
+      0 0 1px rgba(220, 232, 255, 0.6);
+  }
+
+  /* Pill-shaped vertical track — narrow, dark slate, fully rounded ends. */
+  .inst-switch {
+    width: clamp(14px, calc(var(--key-w) * 0.3), 22px);
+    height: clamp(28px, calc(var(--key-w) * 0.7), 48px);
+    position: relative;
+    background: #2a3242;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.7),
+      0 1px 2px rgba(0,0,0,0.5),
+      0 1px 0 rgba(180, 200, 240, 0.05) inset;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* Knob — fat, round, off-white. Diameter is 78% of the track width;
+     since the track is narrower than tall, the knob sits at top by
+     default (PIANO) and drops to the bottom when .synth is set. */
+  .inst-switch::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 8%;
+    width: 78%;
+    aspect-ratio: 1 / 1;
+    background: linear-gradient(180deg, #f4f0e6 0%, #ddd6c5 100%);
+    border-radius: 50%;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 -1px 1px rgba(0, 0, 0, 0.15) inset,
+      0 0 0 0.5px rgba(0, 0, 0, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.4);
+    transition: top 0.15s ease, bottom 0.15s ease;
+  }
+  .inst-switch.synth::before {
+    top: auto;
+    bottom: 8%;
+  }
+
+  /* === VOLUME KNOB === */
+  /* A small rotary dial sitting next to the instrument toggle. Same
+     visual family — off-white face matching the toggle knob, slate
+     housing — but circular like a real synth potentiometer. Vertical
+     drag rotates it; snaps to 12 o'clock (unity) when released near
+     center. Two faint tick marks at the rotation extremes show the
+     range without being noisy. */
+  .vol-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: max(2px, calc(var(--key-w) * 0.04));
+  }
+
+  .vol-toggle .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(4.5px, calc(var(--key-w) * 0.085), 7px);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: rgba(240, 246, 255, 0.85);
+    text-shadow:
+      0 0 4px rgba(170, 200, 255, 0.5),
+      0 0 1px rgba(220, 232, 255, 0.6);
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Outer housing — a dark ring that the knob sits inside. The knob
+     itself rotates within this housing. Sized to match the height of
+     the instrument switch so the two controls feel balanced. */
+  .vol-knob-housing {
+    width: clamp(26px, calc(var(--key-w) * 0.64), 44px);
+    height: clamp(26px, calc(var(--key-w) * 0.64), 44px);
+    position: relative;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 30%, #3a4358 0%, #2a3242 70%, #1c2230 100%);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.7),
+      0 1px 2px rgba(0,0,0,0.5),
+      0 1px 0 rgba(180, 200, 240, 0.06) inset;
+    cursor: grab;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .vol-knob-housing:active {
+    cursor: grabbing;
+  }
+
+  /* Two faint tick marks on the outer ring at the rotation extremes
+     (7 o'clock and 5 o'clock). They sit just outside the knob face,
+     giving a sense of the range without dominating. */
+  .vol-knob-housing::before,
+  .vol-knob-housing::after {
+    content: '';
+    position: absolute;
+    width: 8%;
+    height: 12%;
+    background: rgba(190, 210, 255, 0.22);
+    border-radius: 1px;
+    top: 76%;
+  }
+  .vol-knob-housing::before {
+    left: 14%;
+    transform: rotate(45deg);
+    transform-origin: center;
+  }
+  .vol-knob-housing::after {
+    right: 14%;
+    transform: rotate(-45deg);
+    transform-origin: center;
+  }
+
+  /* The knob face itself — circular, off-white, with a notch indicator
+     line that rotates to show the current value. Notch is rendered via
+     a CSS gradient so it scales perfectly with the knob. */
+  .vol-knob-face {
+    position: absolute;
+    left: 12%;
+    top: 12%;
+    width: 76%;
+    height: 76%;
+    border-radius: 50%;
+    background:
+      /* The indicator notch — a vertical dark line from center to top,
+         drawn with a linear gradient. Rotates with the knob. */
+      linear-gradient(180deg,
+        rgba(60, 50, 40, 0.85) 0%,
+        rgba(60, 50, 40, 0.85) 32%,
+        transparent 32%,
+        transparent 100%),
+      /* Then the off-white face material underneath. */
+      linear-gradient(155deg, #f4f0e6 0%, #ddd6c5 100%);
+    background-size: 8% 100%, 100% 100%;
+    background-position: center top, center center;
+    background-repeat: no-repeat;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 -1px 1px rgba(0, 0, 0, 0.15) inset,
+      0 0 0 0.5px rgba(0, 0, 0, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.4);
+    transform: rotate(0deg);
+    pointer-events: none;
+  }
+  .vol-knob-face.snapping {
+    transition: transform 0.15s ease;
+  }
+
+  /* === TOP ROW: clip buttons === */
+  /* Centered horizontal row of MIDI clip memory buttons at the very top
+     of the device. Mirrors the bottom sustain bar's centered placement
+     for visual symmetry. */
+  .top-row {
+    align-self: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: max(6px, calc(var(--key-w) * 0.12));
+  }
+
+  /* === BOTTOM ROW: sustain bar === */
+  /* Just the sustain bar, anchored to the bottom of the device via
+     .device's space-between layout. Wrapped in a row container for
+     consistent centering and so the divider line above can be a
+     pseudo-element on the wrapper. */
+  .bottom-row {
+    align-self: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Divider above the bottom row, sitting in the middle of the gap
+     between the bottom manual and the row — mirrors the inter-manual
+     dividers. Spans the full device width, not just the row. */
+  .bottom-row::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--manual-gap) / 2);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    height: 1px;
+    background: rgba(190, 210, 255, 0.1);
+    pointer-events: none;
+  }
+
+  /* === CLIP BUTTONS === */
+  /* Square chiclets — small utility controls for the MIDI memory feature.
+     Four uniform states (no per-slot color): empty (dim white), recording
+     (red), loaded (bright white), playing (green). Number and edge glow
+     share the state's color. */
+  .clip-btn {
+    width: calc(var(--ctrl-w) * 1.5);
+    height: calc(var(--ctrl-w) * 1.5);
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background-color: #0a0707;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(11px, calc(var(--key-w) * 0.22), 17px);
+    font-weight: 700;
+    letter-spacing: 0;
+    transition: color 0.06s, text-shadow 0.06s, box-shadow 0.06s;
+    /* Default = empty: dim white, subtle edge glow, visible border. */
+    color: rgba(225, 235, 255, 0.35);
+    text-shadow: 0 0 3px rgba(225, 235, 255, 0.2);
+    box-shadow:
+      0 1px 0 rgba(180, 200, 240, 0.06) inset,
+      0 0 0 0.5px rgba(0,0,0,0.6),
+      0 0 0 1px rgba(225, 235, 255, 0.18),
+      0 0 4px rgba(225, 235, 255, 0.18),
+      0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  .clip-btn:active {
+    filter: brightness(0.7);
+  }
+
+  /* Recording: bright red. Number and edge glow both red. */
+  .clip-btn.recording {
+    color: rgba(255, 130, 110, 0.95);
+    text-shadow:
+      0 0 5px rgba(245, 60, 60, 0.85),
+      0 0 1px rgba(255, 150, 130, 0.7);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.5),
+      0 0 6px rgba(245, 60, 60, 0.85),
+      0 0 14px rgba(245, 60, 60, 0.4);
+  }
+
+  /* Loaded but stopped: bright white. Reads as "this slot has content,
+     ready to play". Same color for number and edge, no animation. */
+  .clip-btn.loaded {
+    color: rgba(245, 250, 255, 0.95);
+    text-shadow:
+      0 0 5px rgba(225, 235, 255, 0.7),
+      0 0 1px rgba(245, 250, 255, 0.85);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.5),
+      0 0 6px rgba(225, 235, 255, 0.7),
+      0 0 14px rgba(225, 235, 255, 0.3);
+  }
+
+  /* Playing: bright green. Number and edge glow both green. */
+  .clip-btn.playing {
+    color: rgba(140, 250, 175, 0.95);
+    text-shadow:
+      0 0 5px rgba(60, 230, 110, 0.85),
+      0 0 1px rgba(170, 255, 195, 0.7);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.5),
+      0 0 6px rgba(60, 230, 110, 0.85),
+      0 0 14px rgba(60, 230, 110, 0.4);
+  }
+
+  /* === CLIP DIALOG === */
+  /* Modal that appears on long-press of a loaded/playing clip button.
+     Offers EXPORT MIDI and DELETE actions, plus tap-outside-to-cancel.
+     Uses the same dark slate / cool-blue accent palette as the other
+     hardware controls. Floats above the device on a dim overlay. */
+  .clip-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 4, 3, 0.7);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .clip-dialog-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .clip-dialog {
+    background: #14181f;
+    border-radius: 10px;
+    padding: 22px 22px 18px;
+    min-width: 240px;
+    max-width: 80vw;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow:
+      0 1px 0 rgba(180, 200, 240, 0.06) inset,
+      0 0 0 0.5px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(190, 210, 255, 0.1),
+      0 8px 24px rgba(0, 0, 0, 0.6);
+    transform: scale(0.94);
+    transition: transform 0.15s ease;
+  }
+  .clip-dialog-overlay.open .clip-dialog {
+    transform: scale(1);
+  }
+
+  .clip-dialog-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: rgba(225, 235, 255, 0.55);
+    text-shadow: 0 0 4px rgba(170, 200, 255, 0.25);
+    text-align: center;
+    margin-bottom: 4px;
+    user-select: none;
+  }
+
+  .clip-dialog-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .clip-dialog-btn {
+    background: #2a3242;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: rgba(225, 235, 255, 0.85);
+    text-shadow: 0 0 3px rgba(170, 200, 255, 0.3);
+    box-shadow:
+      0 1px 0 rgba(180, 200, 240, 0.06) inset,
+      0 0 0 0.5px rgba(0,0,0,0.6),
+      0 1px 2px rgba(0,0,0,0.5);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.06s, color 0.06s, box-shadow 0.06s;
+  }
+  .clip-dialog-btn:active {
+    background: #161c28;
+  }
+  /* Delete button uses red accent like the recording state */
+  .clip-dialog-btn.danger {
+    color: rgba(255, 130, 110, 0.95);
+    text-shadow: 0 0 4px rgba(245, 60, 60, 0.5);
+  }
+  .clip-dialog-btn.danger:active {
+    background: #1c0e0e;
+  }
+
+  /* Cancel — smaller, subtler, sits below the action buttons */
+  .clip-dialog-cancel {
+    background: transparent;
+    border: none;
+    padding: 6px 0 0;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: rgba(225, 235, 255, 0.4);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .clip-dialog-cancel:active {
+    color: rgba(225, 235, 255, 0.7);
+  }
+
+  /* === PANIC BUTTON === */
+  /* Subtle "all notes off" escape hatch. Lives in the bottom-right of
+     the device, vertically centered against the bottom row (= sustain
+     bar) so it reads as a sibling control. Horizontal position is set
+     by JS to right-align with the rightmost key. Renders as plain dim
+     text — barely-there until needed. Text styling matches the SUSTAIN
+     label: same size, weight, letter-spacing. */
+  .panic-btn {
+    position: absolute;
+    /* Vertical center: device padding-bottom (14px) + half the bottom
+       row's height (= 0.75 × ctrl-w). transform: translateY(50%)
+       centers the text on that line. */
+    bottom: calc(14px + 0.75 * var(--ctrl-w));
+    transform: translateY(50%);
+    right: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(5.5px, calc(var(--key-w) * 0.1), 8px);
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: rgba(225, 235, 255, 0.32);
+    text-shadow: 0 0 3px rgba(170, 200, 255, 0.15);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: color 0.1s, text-shadow 0.1s;
+    z-index: 10;
+  }
+  .panic-btn:active {
+    color: rgba(225, 235, 255, 0.6);
+  }
+  /* Brief red flash when fired so the user knows it took effect.
+     Without feedback the action is silent and could feel like nothing
+     happened. */
+  .panic-btn.fired {
+    color: rgba(255, 130, 110, 0.95);
+    text-shadow:
+      0 0 5px rgba(245, 60, 60, 0.7),
+      0 0 1px rgba(255, 150, 130, 0.6);
+  }
+
   /* === SUSTAIN BAR === */
   /* Slim spacebar-style hold control, centered below the bottom manual.
      Subtle bronze idle distinguishes it from the slate OCT buttons —
-     two different "metals" for two different controls. */
+     two different "metals" for two different controls. Lives inside
+     .bottom-row alongside the clip buttons. */
   .sustain-bar {
-    align-self: center;
     width: calc(var(--key-w) * 8);
-    height: var(--ctrl-w);
-    margin-top: 2px;
+    height: calc(var(--ctrl-w) * 1.5);
+    position: relative;
     background: #3a2f23;
     border: none;
-    border-radius: 4px;
+    border-radius: 7px;
     cursor: pointer;
     font-family: 'Inter', sans-serif;
     font-size: clamp(5.5px, calc(var(--key-w) * 0.1), 8px);
@@ -281,58 +787,6 @@
       0 0 1px rgba(255, 200, 100, 0.6);
   }
 
-  /* === BOTTOM CONTROL ROW: instrument selector + sustain bar === */
-  .bottom-controls {
-    align-self: center;
-    display: flex;
-    gap: 6px;
-    align-items: stretch;
-    margin-top: 2px;
-  }
-
-  /* Override sustain bar's own positioning when it's inside the row */
-  .bottom-controls .sustain-bar {
-    align-self: auto;
-    margin-top: 0;
-  }
-
-  .inst-btn {
-    background: #2a3242;
-    border: none;
-    border-radius: 4px;
-    height: var(--ctrl-w);
-    padding: 0 calc(var(--key-w) * 0.18);
-    min-width: calc(var(--key-w) * 1.5);
-    font-family: 'Inter', sans-serif;
-    font-size: clamp(5.5px, calc(var(--key-w) * 0.1), 8px);
-    font-weight: 500;
-    letter-spacing: 0.22em;
-    color: rgba(225, 235, 255, 0.5);
-    text-shadow:
-      0 0 3px rgba(170, 200, 255, 0.25),
-      0 0 1px rgba(220, 232, 255, 0.35);
-    box-shadow:
-      0 1px 0 rgba(180, 200, 240, 0.06) inset,
-      0 0 0 0.5px rgba(0,0,0,0.6),
-      0 1px 2px rgba(0,0,0,0.5);
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    transition: background 0.05s, color 0.05s;
-  }
-
-  .inst-btn.selected {
-    background: #161c28;
-    color: rgba(240, 246, 255, 0.85);
-    text-shadow:
-      0 0 5px rgba(170, 200, 255, 0.5),
-      0 0 1px rgba(220, 232, 255, 0.6);
-    box-shadow:
-      0 1px 3px rgba(0,0,0,0.55) inset,
-      0 0 0 0.5px rgba(0,0,0,0.7);
-  }
-
   /* === KEYBOARD AREA === */
   .keyboard {
     display: grid;
@@ -349,7 +803,7 @@
   }
 
   .key {
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     touch-action: none;
     position: relative;
@@ -532,22 +986,28 @@
   // Stacked keyboard manuals — each spans 2 octaves at a different starting
   // pitch, so together they cover the useful range of a piano like the
   // manuals on a pipe organ console. Top manual = treble range (right hand),
-  // bottom manual = bass range (left hand).
+  // bottom manual = bass range (left hand). Each carries its own selected
+  // instrument and volume so the player can split (e.g., synth pad over
+  // piano bass at different mix levels).
   const MANUALS = [
-    { octaveStart: 4 },  // top:    C4 — C6
-    { octaveStart: 2 },  // bottom: C2 — C4
+    { octaveStart: 4, instrument: 'piano', volume: 0.5 },  // top:    C4 — C6
+    { octaveStart: 2, instrument: 'piano', volume: 0.5 },  // bottom: C2 — C4
   ];
 
-  let pianoSampler = null;
-  let organSynth = null;
-  let activeInstrument = null;
+  // Instruments — each exposes triggerAttack/triggerRelease so noteOn/Off
+  // can route to the right one based on the firing manual's selection.
+  const instruments = {
+    piano: null,  // Tone.Sampler — built in initInstruments
+    synth: null,  // Casiotone Pad voice — built in initInstruments
+  };
   let samplesLoaded = false;
   let audioStarted = false;
-  let currentInstName = 'piano';
-  const velocity = 0.85;
 
-  const activeNotes = new Map(); // note -> Set of touch ids
-  const touchToNote = new Map(); // touch id -> note
+  // activeNotes maps "manualIdx:note" to a Set of touch ids. Including the
+  // manual in the key means the same pitch held simultaneously on both
+  // manuals (with different instruments) doesn't collide.
+  const activeNotes = new Map();
+  const touchToKey = new Map();  // touch id -> "manualIdx:note"
 
   // Sustain pedal state — when engaged, lifted notes keep ringing until
   // the bar is released, mimicking a piano's damper pedal.
@@ -555,7 +1015,7 @@
   let sustainLocked = false;
   let lastSustainTapAt = 0;
   const DOUBLE_TAP_MS = 400;
-  const sustainedNotes = new Set();
+  const sustainedNotes = new Map();
   const sustainInputs = new Set();
 
   // === Salamander Grand Piano (Alexander Holm), hosted by Tone.js ===
@@ -576,6 +1036,34 @@
     const device = document.getElementById('device');
     device.innerHTML = '';
     document.documentElement.style.setProperty('--n', MANUALS.length);
+
+    // Top row: four MIDI clip memory buttons, centered. Mirrors the
+    // bottom sustain bar's centered placement for visual symmetry.
+    // Tap once to start recording, again to stop, again to play; long-
+    // press to erase.
+    const topRow = document.createElement('div');
+    topRow.className = 'top-row';
+    function makeClipButton(slot) {
+      const btn = document.createElement('button');
+      btn.className = 'clip-btn';
+      btn.dataset.slot = slot;
+      btn.textContent = String(slot + 1);
+      btn.setAttribute('aria-label', `Clip slot ${slot + 1}`);
+      attachClipHandlers(btn, slot);
+      return btn;
+    }
+    for (let i = 0; i < NUM_CLIPS; i++) {
+      topRow.appendChild(makeClipButton(i));
+    }
+    device.appendChild(topRow);
+
+    // Wrap the manuals in their own container so they stay packed
+    // together in the middle of the device while top and bottom rows
+    // anchor to the screen edges via .device's space-between layout.
+    const manualsStack = document.createElement('div');
+    manualsStack.className = 'manuals-stack';
+    device.appendChild(manualsStack);
+
     MANUALS.forEach((m, idx) => {
       // Manual wrapper: controls on the left, keyboard on the right
       const manual = document.createElement('div');
@@ -608,39 +1096,148 @@
 
       manual.appendChild(controls);
       manual.appendChild(kb);
-      device.appendChild(manual);
+      manualsStack.appendChild(manual);
 
       buildManual(kb, m.octaveStart);
+
+      // Upper-right corner controls — instrument toggle on the left,
+      // volume slider on the right. Both per-manual.
+      const upper = document.createElement('div');
+      upper.className = 'upper-controls';
+
+      // --- Instrument toggle ---
+      const toggle = document.createElement('div');
+      toggle.className = 'inst-toggle';
+      const lblPiano = document.createElement('span');
+      lblPiano.className = 'lbl lbl-piano';
+      lblPiano.textContent = 'PIANO';
+      const sw = document.createElement('div');
+      sw.className = 'inst-switch';
+      sw.setAttribute('role', 'switch');
+      sw.setAttribute('aria-label', `Instrument selector for manual ${idx + 1}`);
+      const lblSynth = document.createElement('span');
+      lblSynth.className = 'lbl lbl-synth';
+      lblSynth.textContent = 'SYNTH';
+
+      // The toggle lives inside the keyboard grid (so it can occupy the
+      // empty corner via grid placement), but the keyboard's touchstart
+      // handler calls preventDefault, which on iOS swallows the synthetic
+      // click that would otherwise reach the toggle. So we attach explicit
+      // touch handlers here and stopPropagation to keep the keyboard's
+      // handler from running on these touches.
+      const flipSwitch = () => {
+        const next = MANUALS[idx].instrument === 'piano' ? 'synth' : 'piano';
+        setInstrument(idx, next);
+      };
+      const setTo = (name) => () => setInstrument(idx, name);
+
+      function bindTap(el, handler) {
+        // Click works on desktop; touchstart works on iOS. Use both with
+        // stopPropagation so the keyboard's preventDefault doesn't
+        // intercept, and a small flag to avoid double-firing on devices
+        // that synthesize click after touch.
+        let touched = false;
+        el.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+          touched = true;
+          handler();
+        }, { passive: true });
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (touched) { touched = false; return; }
+          handler();
+        });
+      }
+      bindTap(sw, flipSwitch);
+      bindTap(lblPiano, setTo('piano'));
+      bindTap(lblSynth, setTo('synth'));
+
+      toggle.appendChild(lblPiano);
+      toggle.appendChild(sw);
+      toggle.appendChild(lblSynth);
+      upper.appendChild(toggle);
+
+      // --- Volume knob ---
+      // Rotary dial. Vertical drag rotates the knob; snaps to 12 o'clock
+      // (unity gain) when released within a small detent zone.
+      const vol = document.createElement('div');
+      vol.className = 'vol-toggle';
+      const volLblTop = document.createElement('span');
+      volLblTop.className = 'lbl';
+      volLblTop.textContent = 'VOL';
+      const volHousing = document.createElement('div');
+      volHousing.className = 'vol-knob-housing';
+      volHousing.setAttribute('role', 'slider');
+      volHousing.setAttribute('aria-label', `Volume for manual ${idx + 1}`);
+      const volFace = document.createElement('div');
+      volFace.className = 'vol-knob-face';
+      volHousing.appendChild(volFace);
+      vol.appendChild(volLblTop);
+      vol.appendChild(volHousing);
+      upper.appendChild(vol);
+      attachVolumeHandlers(volHousing, volFace, idx);
+
+      kb.appendChild(upper);
     });
 
-    // Bottom control row: instrument selector + sustain bar.
-    const bottomControls = document.createElement('div');
-    bottomControls.className = 'bottom-controls';
+    // Bottom row: just the sustain bar, anchored to the bottom of the
+    // device via .device's space-between flex layout. Wrapped in a row
+    // container so it stays centered horizontally.
+    const bottomRow = document.createElement('div');
+    bottomRow.className = 'bottom-row';
 
-    const instruments = [
-      { name: 'piano', label: 'PIANO' },
-      { name: 'organ', label: 'ORGAN' },
-    ];
-    instruments.forEach(({ name, label }) => {
-      const btn = document.createElement('button');
-      btn.className = 'inst-btn' + (name === currentInstName ? ' selected' : '');
-      btn.dataset.inst = name;
-      btn.textContent = label;
-      btn.addEventListener('click', () => setInstrument(name));
-      bottomControls.appendChild(btn);
-    });
-
-    // Sustain bar: thin spacebar-style hold control under the bottom manual.
     const sustainBar = document.createElement('button');
     sustainBar.className = 'sustain-bar';
     sustainBar.textContent = 'SUSTAIN';
     sustainBar.setAttribute('aria-label', 'Sustain pedal (hold to engage)');
     attachSustainHandlers(sustainBar);
-    bottomControls.appendChild(sustainBar);
+    bottomRow.appendChild(sustainBar);
 
-    device.appendChild(bottomControls);
+    device.appendChild(bottomRow);
+
+    // Panic button: lives in the device root (not in bottom-row) so it
+    // can sit at the device's right edge while still vertically aligning
+    // with the sustain bar via its CSS bottom calc. Horizontal position
+    // is set by JS to right-align with the rightmost key. Tapping
+    // releases all sounding notes and resets sustain state. Briefly
+    // flashes red on tap.
+    const panicBtn = document.createElement('button');
+    panicBtn.className = 'panic-btn';
+    panicBtn.textContent = 'PANIC';
+    panicBtn.setAttribute('aria-label', 'Panic — release all notes');
+    function firePanic() {
+      panic();
+      panicBtn.classList.add('fired');
+      setTimeout(() => panicBtn.classList.remove('fired'), 400);
+    }
+    panicBtn.addEventListener('click', firePanic);
+    panicBtn.addEventListener('touchstart', (e) => {
+      // Touchstart fires immediately for crisp feel on iOS; preventDefault
+      // suppresses the synthesized click that would otherwise fire later
+      // and cause a duplicate trigger.
+      e.preventDefault();
+      firePanic();
+    }, { passive: false });
+    device.appendChild(panicBtn);
+
+    // Right-align the panic text with the rightmost key. The device's
+    // right padding doesn't necessarily land on the key edge — keys
+    // size dynamically, so compute it after layout. Re-runs on resize.
+    function alignPanicButton() {
+      const lastKey = document.querySelector('.manual:last-child .key:last-child')
+        || document.querySelector('.manual .key:last-child');
+      if (!lastKey) return;
+      const keyRect = lastKey.getBoundingClientRect();
+      const deviceRect = device.getBoundingClientRect();
+      // Distance from device's right edge inward to the key's right edge.
+      const offset = deviceRect.right - keyRect.right;
+      panicBtn.style.right = offset + 'px';
+    }
+    requestAnimationFrame(alignPanicButton);
+    window.addEventListener('resize', alignPanicButton);
 
     refreshOctaveButtonStates();
+    refreshInstrumentButtonStates();
   }
 
   function shiftOctave(manualIdx, direction) {
@@ -653,9 +1250,48 @@
     m.octaveStart = newOct;
     const wrap = document.querySelector(`.manual[data-manual-idx="${manualIdx}"]`);
     const kb = wrap.querySelector('.keyboard');
+    // Preserve the upper controls (toggle + volume slider) through the
+    // rebuild — they live in the grid alongside the keys but aren't
+    // rebuilt by buildManual.
+    const upper = kb.querySelector('.upper-controls');
     kb.innerHTML = '';
     buildManual(kb, m.octaveStart);
+    if (upper) kb.appendChild(upper);
     refreshOctaveButtonStates();
+  }
+
+  function setInstrument(manualIdx, instName) {
+    if (MANUALS[manualIdx].instrument === instName) return;
+    // Release notes currently sounding on this manual's old instrument so
+    // they don't hang. The simplest correct move is to release everything
+    // on this manual; sustained notes on the other manual are untouched.
+    const oldInst = instruments[MANUALS[manualIdx].instrument];
+    if (oldInst && oldInst.releaseAll) {
+      // Only release notes belonging to this manual
+      for (const [key] of activeNotes) {
+        const [mIdx, note] = key.split(':');
+        if (parseInt(mIdx, 10) === manualIdx) oldInst.triggerRelease(manualIdx, note);
+      }
+      // And any sustained notes
+      for (const [key, val] of sustainedNotes) {
+        const [mIdx] = key.split(':');
+        if (parseInt(mIdx, 10) === manualIdx) {
+          oldInst.triggerRelease(manualIdx, val.note);
+          sustainedNotes.delete(key);
+        }
+      }
+    }
+    MANUALS[manualIdx].instrument = instName;
+    refreshInstrumentButtonStates();
+  }
+
+  function refreshInstrumentButtonStates() {
+    document.querySelectorAll('.manual').forEach(wrap => {
+      const idx = parseInt(wrap.dataset.manualIdx, 10);
+      const selected = MANUALS[idx].instrument;
+      const sw = wrap.querySelector('.inst-switch');
+      if (sw) sw.classList.toggle('synth', selected === 'synth');
+    });
   }
 
   function refreshOctaveButtonStates() {
@@ -707,6 +1343,119 @@
     }
   }
 
+  // === Volume knob ===
+  // The knob shows volume as rotation: 0.0 = -135° (full counter-clockwise,
+  // 7 o'clock), 0.5 = 0° (12 o'clock straight up = unity gain), 1.0 = +135°
+  // (full clockwise, 5 o'clock). Vertical drag is the gesture (more
+  // touch-friendly than rotational on a small target): drag up to turn up,
+  // drag down to turn down. Snaps to 12 o'clock (unity) when released
+  // within a small detent zone around 0.5.
+  const SNAP_ZONE = 0.12;       // ±12% around 0.5 snaps to center on release
+  const SNAP_TARGET = 0.5;
+  const ROTATION_RANGE = 135;   // degrees from center to each end
+  const DRAG_PIXELS_PER_FULL_RANGE = 120;  // pixels to drag for full 0→1
+
+  function setKnobRotation(face, vol) {
+    // Map 0..1 to -135°..+135°
+    const deg = (vol - 0.5) * 2 * ROTATION_RANGE;
+    face.style.transform = `rotate(${deg}deg)`;
+  }
+
+  function applyVolume(manualIdx, vol) {
+    MANUALS[manualIdx].volume = vol;
+    // Apply to both instruments — only the one in use will actually
+    // produce sound, but keeping both in sync means switching instruments
+    // mid-play preserves the volume setting.
+    Object.values(instruments).forEach(inst => {
+      if (inst && inst.setVolume) inst.setVolume(manualIdx, vol);
+    });
+  }
+
+  function attachVolumeHandlers(housing, face, manualIdx) {
+    // Initial position from MANUALS data
+    setKnobRotation(face, MANUALS[manualIdx].volume);
+    applyVolume(manualIdx, MANUALS[manualIdx].volume);
+
+    let dragging = false;
+    let dragStartY = 0;
+    let dragStartVol = 0;
+
+    function startDrag(clientY) {
+      dragging = true;
+      dragStartY = clientY;
+      dragStartVol = MANUALS[manualIdx].volume;
+      face.classList.remove('snapping');
+    }
+    function updateFromPoint(clientY) {
+      if (!dragging) return;
+      // Drag up = positive volume change. Browser y axis goes down, so
+      // negate the delta.
+      const dy = -(clientY - dragStartY);
+      const dv = dy / DRAG_PIXELS_PER_FULL_RANGE;
+      const v = Math.max(0, Math.min(1, dragStartVol + dv));
+      setKnobRotation(face, v);
+      applyVolume(manualIdx, v);
+    }
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      const v = MANUALS[manualIdx].volume;
+      if (Math.abs(v - SNAP_TARGET) < SNAP_ZONE) {
+        face.classList.add('snapping');
+        setKnobRotation(face, SNAP_TARGET);
+        applyVolume(manualIdx, SNAP_TARGET);
+        // Drop the snapping class after the animation so subsequent
+        // drags are immediate (no easing lag).
+        setTimeout(() => face.classList.remove('snapping'), 180);
+      }
+    }
+
+    // Touch
+    housing.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      startDrag(e.changedTouches[0].clientY);
+    }, { passive: false });
+    housing.addEventListener('touchmove', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      updateFromPoint(e.changedTouches[0].clientY);
+    }, { passive: false });
+    housing.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      endDrag();
+    }, { passive: false });
+    housing.addEventListener('touchcancel', endDrag, { passive: false });
+
+    // Mouse — listen on window for move/up so dragging works even if
+    // cursor leaves the knob.
+    housing.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      startDrag(e.clientY);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (dragging) updateFromPoint(e.clientY);
+    });
+    window.addEventListener('mouseup', () => {
+      if (dragging) endDrag();
+    });
+
+    // Double-click / double-tap snaps to center, classic mixer behavior.
+    let lastTap = 0;
+    housing.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const now = Date.now();
+      if (now - lastTap < 350) {
+        face.classList.add('snapping');
+        setKnobRotation(face, SNAP_TARGET);
+        applyVolume(manualIdx, SNAP_TARGET);
+        setTimeout(() => face.classList.remove('snapping'), 180);
+      }
+      lastTap = now;
+    });
+  }
+
   function makeKey(note, kind) {
     const el = document.createElement('div');
     el.className = `key ${kind}`;
@@ -716,102 +1465,395 @@
 
   // === Audio ===
   function initInstruments() {
-    // Piano: sample-based — Salamander Grand Piano hosted by Tone.js.
-    pianoSampler = new Tone.Sampler({
+    // Low-latency hint must be set on the underlying AudioContext before
+    // Tone wires anything up. interactive ≈ 0.17s on iOS Safari; we want
+    // smaller. Combined with lookAhead=0 below, this drops perceived
+    // delay to roughly 1 audio buffer (~10–20ms on most iOS devices).
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)({
+        latencyHint: 'interactive',
+        sampleRate: 44100
+      });
+      Tone.setContext(ctx);
+    } catch (e) { /* fall back to Tone's default context */ }
+    Tone.context.lookAhead = 0;
+
+    // === Piano: Salamander Grand Sampler, per-manual ===
+    // Load the sample buffers once into a shared ToneAudioBuffers store,
+    // then construct one Sampler per manual that references those same
+    // buffers. This way each manual gets its own gain stage (controlled
+    // by the volume knob) and full per-manual independence — but we
+    // only pay the network/decode cost once.
+    const pianoBuffers = new Tone.ToneAudioBuffers({
       urls: SAMPLE_NOTES,
       baseUrl: SALAMANDER_BASE,
-      release: 1.2,
-      onload: () => { samplesLoaded = true; },
-      onerror: (e) => { console.error(e); }
-    }).toDestination();
-
-    // Farfisa-style organ: pure synthesis. Real Farfisas were divider organs
-    // with square-wave-ish tone generators per note. We approximate with a
-    // PolySynth voiced as 3 detuned square oscillators, fast attack, infinite
-    // sustain, short release. A subtle chorus gives that combo-organ shimmer.
-    const chorus = new Tone.Chorus(1.4, 3.5, 0.55).start();
-    organSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'fatsquare', count: 3, spread: 28 },
-      envelope: { attack: 0.008, decay: 0, sustain: 1.0, release: 0.28 }
     });
-    organSynth.volume.value = -14;
-    organSynth.chain(chorus, Tone.Destination);
 
-    activeInstrument = pianoSampler;
+    function buildPianoSampler() {
+      // Build the urls map by reusing the loaded buffers directly.
+      // Tone.Sampler accepts AudioBuffer/ToneAudioBuffer values in the
+      // urls map alongside (or instead of) URL strings.
+      const urls = {};
+      Object.keys(SAMPLE_NOTES).forEach(note => {
+        urls[note] = pianoBuffers.get(note);
+      });
+      return new Tone.Sampler({
+        urls,
+        release: 1.2,
+      });
+    }
+
+    // Per-manual gain nodes for piano. Knob midpoint (0.5) → unity gain.
+    // Knob max (1.0) → 2x gain (~+6dB). Knob min (0) → silent.
+    const pianoGains = MANUALS.map(m => new Tone.Gain(m.volume * 2).toDestination());
+    const pianoSamplers = MANUALS.map(() => null);  // built after buffers load
+
+    // Build the per-manual samplers once buffers have loaded, then run
+    // the warmup pass. Tone.loaded() resolves when all in-flight loads
+    // (including pianoBuffers) complete.
+    Tone.loaded().then(() => {
+      MANUALS.forEach((_, i) => {
+        const s = buildPianoSampler();
+        s.connect(pianoGains[i]);
+        pianoSamplers[i] = s;
+      });
+      samplesLoaded = true;
+      warmUpSamples();
+    });
+
+    instruments.piano = {
+      triggerAttack: (manualIdx, note, time, vel) => {
+        const s = pianoSamplers[manualIdx];
+        if (!s) return;
+        // No more velocity scaling — gain is handled by the manual's
+        // dedicated Tone.Gain node downstream. Velocity passes through
+        // unmodified, so soft hits stay soft and loud hits stay loud.
+        s.triggerAttack(note, time, vel);
+      },
+      triggerRelease: (manualIdx, note, time) => {
+        const s = pianoSamplers[manualIdx];
+        if (!s) return;
+        s.triggerRelease(note, time);
+      },
+      releaseAll: () => {
+        pianoSamplers.forEach(s => { if (s) s.releaseAll(); });
+      },
+      setExpression: () => {},
+      setVolume: (manualIdx, vol) => {
+        // 0..1 input → 0..2 gain. Knob midpoint = unity, knob max = +6dB.
+        if (pianoGains[manualIdx]) {
+          pianoGains[manualIdx].gain.rampTo(vol * 2, 0.04);
+        }
+      },
+      _samplers: pianoSamplers,
+      _gains: pianoGains,
+    };
+
+    // === Synth: CASIOTONE PAD ✓ — saved from audition session ===
+    // Triangle + sine unison · LP 1.4kHz · vibrato 2.3Hz / 0.014 · long
+    // reverb · attack 60ms · sustain 0.7. Built per-manual so that
+    // touchmove on one manual can modulate its own volume in real time
+    // without affecting the other manual.
+    const sharedReverb = new Tone.Reverb({ decay: 2.6, wet: 0.38 }).toDestination();
+    sharedReverb.generate();
+
+    function buildSynthVoice() {
+      // Master gain — controlled by the volume slider per manual. Sits
+      // at the very end of the voice chain so it scales the final
+      // (already-vibrato'd, already-filtered) signal cleanly. Default
+      // to unity (slider midpoint = 0.5 → gain 1.0).
+      const master = new Tone.Gain(1.0).connect(sharedReverb);
+      const filter = new Tone.Filter({ frequency: 1400, type: 'lowpass', Q: 0.5 }).connect(master);
+      const vibrato = new Tone.Vibrato({ frequency: 2.3, depth: 0.014 }).connect(filter);
+      // Expression gain — sits before the filter, modulated by touchmove
+      // for real-time volume control. Per-voice means each manual's synth
+      // gets its own dynamic level. Master is separate so the slider and
+      // the expression don't fight each other.
+      const expression = new Tone.Gain(1.0).connect(vibrato);
+      // Polyphony cap of 16 prevents voice-stealing artifacts when playing
+      // fast (default is 32, but with 0.9s release tails that pile up).
+      // Release time dropped from 1.6s to 0.9s — still a pad-like decay
+      // but voices clear out faster, which keeps the synth feeling clean
+      // during fast passages.
+      const tri = new Tone.PolySynth(Tone.Synth, {
+        maxPolyphony: 16,
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.06, decay: 0.6, sustain: 0.7, release: 0.9 }
+      });
+      const sine = new Tone.PolySynth(Tone.Synth, {
+        maxPolyphony: 16,
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.06, decay: 0.6, sustain: 0.7, release: 0.9 }
+      });
+      tri.volume.value = -10;
+      sine.volume.value = -12;
+      tri.connect(expression);
+      sine.connect(expression);
+      return { tri, sine, expression, master };
+    }
+
+    // Velocity-sensitive attack: firm hits speak almost immediately
+    // (15ms), soft hits keep the gentle pad swell (90ms). Cubic curve
+    // shifts more of the range toward shorter attacks — feels more
+    // responsive without losing the soft-hit character.
+    function attackTimeFor(vel) {
+      const FAST = 0.015;
+      const SLOW = 0.09;
+      // vel is 0.45–1.0 in our range; normalize to 0..1
+      const t = Math.max(0, Math.min(1, (vel - 0.45) / 0.55));
+      return SLOW - (SLOW - FAST) * t;
+    }
+
+    // One synth instance per manual. The wrapper exposes triggerAttack/
+    // triggerRelease taking (manualIdx, note, ...) so noteOn/Off can route
+    // to the right voice. setExpression(manualIdx, vel) modulates that
+    // manual's expression gain smoothly.
+    const synthVoices = MANUALS.map(() => buildSynthVoice());
+    instruments.synth = {
+      triggerAttack: (manualIdx, note, time, vel) => {
+        const v = synthVoices[manualIdx];
+        // Update the envelope attack time for the next voice allocation
+        // based on velocity. Tone.PolySynth.set propagates to all voice
+        // configs; the next triggerAttack inherits the new attack time.
+        const a = attackTimeFor(vel);
+        v.tri.set({ envelope: { attack: a } });
+        v.sine.set({ envelope: { attack: a } });
+        v.tri.triggerAttack(note, time, vel);
+        v.sine.triggerAttack(note, time, vel);
+      },
+      triggerRelease: (manualIdx, note, time) => {
+        const v = synthVoices[manualIdx];
+        v.tri.triggerRelease(note, time);
+        v.sine.triggerRelease(note, time);
+      },
+      releaseAll: () => {
+        synthVoices.forEach(v => { v.tri.releaseAll(); v.sine.releaseAll(); });
+      },
+      // Ramp prevents audible clicks from gain changes during slides
+      // (the old note is still releasing, and a snapped gain change
+      // would cut its release tail abruptly). 60ms is short enough to
+      // feel responsive for in-key drift but long enough to mask any
+      // discontinuity. immediate=true snaps; used at fresh-hit attack.
+      setExpression: (manualIdx, vel, immediate) => {
+        const v = synthVoices[manualIdx];
+        const t = Tone.now();
+        v.expression.gain.cancelScheduledValues(t);
+        if (immediate) {
+          v.expression.gain.setValueAtTime(vel, t);
+        } else {
+          v.expression.gain.linearRampToValueAtTime(vel, t + 0.06);
+        }
+      },
+      // Smooth ramp prevents audible zipper noise on rapid drag.
+      setVolume: (manualIdx, vol) => {
+        const v = synthVoices[manualIdx];
+        const t = Tone.now();
+        v.master.gain.cancelScheduledValues(t);
+        // 0..1 input mapped to 0..2 multiplier — midpoint (0.5) = unity gain.
+        v.master.gain.linearRampToValueAtTime(vol * 2, t + 0.04);
+      },
+    };
   }
 
-  function setInstrument(name) {
-    if (currentInstName === name) return;
-    // Cleanly drop everything sounding on the old instrument before switching.
-    releaseAll();
-    currentInstName = name;
-    activeInstrument = (name === 'piano') ? pianoSampler : organSynth;
-    document.querySelectorAll('.inst-btn').forEach(b =>
-      b.classList.toggle('selected', b.dataset.inst === name));
+  // Force iOS to decode + cache every sampled mp3 by triggering each at
+  // zero gain. Without this, the first hit on each pitch pays a small
+  // decode cost — audible as a tiny hitch on the first chord. We route
+  // through a muted gain so nothing is heard during warmup. Buffers are
+  // shared between the per-manual samplers, so warming one warms both.
+  function warmUpSamples() {
+    const samplers = instruments.piano && instruments.piano._samplers;
+    const gains = instruments.piano && instruments.piano._gains;
+    if (!samplers || !samplers[0] || !gains || !gains[0]) return;
+    const piano = samplers[0];
+    const muted = new Tone.Gain(0).toDestination();
+    piano.disconnect();
+    piano.connect(muted);
+    const notes = Object.keys(SAMPLE_NOTES);
+    const now = Tone.now();
+    notes.forEach((n, i) => {
+      piano.triggerAttackRelease(n, 0.05, now + i * 0.001, 0.01);
+    });
+    // Reconnect to its dedicated gain node once warmup samples fire.
+    setTimeout(() => {
+      piano.disconnect();
+      piano.connect(gains[0]);
+      muted.dispose();
+    }, 200);
+  }
+
+  // === Touch-sensitive velocity ===
+  // Maps the touch's vertical position within a key (0=top, 1=bottom)
+  // to a velocity 0.45–1.0. Subtle but expressive: top of key is ~7dB
+  // quieter than bottom, with the middle landing at a comfortable
+  // mid-firm hit. Linear feels right here — fancier curves were tried
+  // but a straight ramp is most predictable to play.
+  function posToVelocity(posY) {
+    const MIN_V = 0.45;  // soft hit at top of key
+    const MAX_V = 1.0;   // firm hit at bottom of key
+    return MIN_V + (MAX_V - MIN_V) * posY;
   }
 
   // === Note triggers ===
-  function noteOn(note, touchId) {
-    if (!audioStarted) {
-      Tone.start().then(() => { audioStarted = true; });
+  // manualIdx tells us which manual fired the event, so we can route to
+  // the correct instrument. Notes are tracked as "manualIdx:note" so the
+  // same pitch held simultaneously on different manuals doesn't collide.
+  // vel is 0–1; default to mid-firm so non-touch inputs (computer kbd,
+  // sustain restoration) sound consistent.
+  function noteOn(manualIdx, note, touchId, vel) {
+    const instName = MANUALS[manualIdx].instrument;
+    const inst = instruments[instName];
+    if (!inst) return;
+    if (instName === 'piano' && !samplesLoaded) return;
+
+    // Detect whether this manual already has notes sounding *before* we
+    // register the new one. If yes, we're sliding into the new note and
+    // expression should ramp smoothly (snapping causes audible clicks
+    // mid-release of the previous note). If no, this is a fresh hit and
+    // expression can snap to the new velocity for full attack force.
+    let manualHadOtherNotes = false;
+    for (const k of activeNotes.keys()) {
+      if (k.startsWith(manualIdx + ':')) { manualHadOtherNotes = true; break; }
     }
-    if (!activeInstrument) return;
-    // Piano needs samples loaded; the organ is ready immediately.
-    if (currentInstName === 'piano' && !samplesLoaded) return;
 
-    if (!activeNotes.has(note)) activeNotes.set(note, new Set());
-    activeNotes.get(note).add(touchId);
+    const key = manualIdx + ':' + note;
 
-    activeInstrument.triggerAttack(note, undefined, velocity);
+    // If this note is currently sustained from a previous tap, release
+    // the sustained voice before attacking a new one. Without this,
+    // PolySynth allocates a second voice for the same pitch and the
+    // sustained voice never gets released — a stuck-note bug. (The
+    // piano sampler's behavior is similar enough to warrant the same
+    // cleanup.)
+    if (sustainedNotes.has(key)) {
+      const sus = sustainedNotes.get(key);
+      const susInst = instruments[sus.instName];
+      if (susInst) susInst.triggerRelease(manualIdx, note);
+      sustainedNotes.delete(key);
+    }
 
-    document.querySelectorAll(`.key[data-note="${CSS.escape(note)}"]`)
-      .forEach(el => el.classList.add('active'));
+    if (!activeNotes.has(key)) activeNotes.set(key, new Set());
+    activeNotes.get(key).add(touchId);
+
+    // Default velocity for non-touch inputs (computer keyboard, mouse
+    // without position info). 0.78 is a comfortable mid-firm hit.
+    const v = (typeof vel === 'number') ? vel : 0.78;
+    inst.triggerAttack(manualIdx, note, undefined, v);
+    // For synth voices, align the per-manual expression gain. Snap only
+    // on a fresh hit; ramp during slides so the gain change doesn't
+    // click against the previous note's release tail.
+    if (inst.setExpression) inst.setExpression(manualIdx, v, !manualHadOtherNotes);
+
+    // MIDI clip recording. Only capture live input (not events fired by
+    // clip playback itself, which use 'pb-...' touch ids).
+    if (typeof touchId !== 'string' || !touchId.startsWith('pb-')) {
+      captureEvent('on', manualIdx, note, v);
+    }
+
+    // Visual feedback: highlight only the matching key on this manual,
+    // not on any other manual that may show the same pitch.
+    const wrap = document.querySelector(`.manual[data-manual-idx="${manualIdx}"]`);
+    if (wrap) {
+      wrap.querySelectorAll(`.key[data-note="${CSS.escape(note)}"]`)
+        .forEach(el => el.classList.add('active'));
+    }
   }
 
-  function noteOff(note, touchId) {
-    if (!activeInstrument) return;
-    const set = activeNotes.get(note);
+  function noteOff(manualIdx, note, touchId) {
+    const instName = MANUALS[manualIdx].instrument;
+    const inst = instruments[instName];
+    if (!inst) return;
+
+    const key = manualIdx + ':' + note;
+    const set = activeNotes.get(key);
     if (set) {
       set.delete(touchId);
       if (set.size === 0) {
-        activeNotes.delete(note);
+        activeNotes.delete(key);
         if (sustainOn) {
-          // Hold the note ringing until sustain bar is released.
-          sustainedNotes.add(note);
+          // Hold the note ringing until sustain bar is released. Track
+          // both note and instrument so we know what to release later.
+          sustainedNotes.set(key, { instName, note, manualIdx });
         } else {
-          activeInstrument.triggerRelease(note);
+          inst.triggerRelease(manualIdx, note);
         }
-        document.querySelectorAll(`.key[data-note="${CSS.escape(note)}"]`)
-          .forEach(el => el.classList.remove('active'));
+        const wrap = document.querySelector(`.manual[data-manual-idx="${manualIdx}"]`);
+        if (wrap) {
+          wrap.querySelectorAll(`.key[data-note="${CSS.escape(note)}"]`)
+            .forEach(el => el.classList.remove('active'));
+        }
       }
+    }
+    // MIDI clip recording. Only capture live input (not events fired by
+    // clip playback itself, which use 'pb-...' touch ids).
+    if (typeof touchId !== 'string' || !touchId.startsWith('pb-')) {
+      captureEvent('off', manualIdx, note, 0);
     }
   }
 
   function releaseAll() {
-    if (activeInstrument) activeInstrument.releaseAll();
+    Object.values(instruments).forEach(inst => {
+      if (inst && inst.releaseAll) inst.releaseAll();
+    });
     activeNotes.clear();
-    touchToNote.clear();
+    touchToKey.clear();
     sustainedNotes.clear();
     document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
+  }
+
+  // PANIC: emergency all-notes-off. Beyond releaseAll, also drops the
+  // sustain pedal (engaged or locked) so any sustained-but-stuck notes
+  // get released, and clears the sustain UI state. Used when a synth
+  // voice gets stuck — rare but possible with PolySynth's voice
+  // allocation under fast play + sustain.
+  function panic() {
+    sustainLocked = false;
+    sustainInputs.clear();
+    if (sustainOn) {
+      sustainOn = false;
+      const bar = document.querySelector('.sustain-bar');
+      if (bar) {
+        bar.classList.remove('engaged');
+        bar.classList.remove('locked');
+      }
+    }
+    releaseAll();
   }
 
   function setSustain(on) {
     if (sustainOn === on) return;
     sustainOn = on;
+    captureSustain(on);
     const bar = document.querySelector('.sustain-bar');
     if (bar) bar.classList.toggle('engaged', on);
-    if (!on && activeInstrument) {
+    if (!on) {
       // Releasing the pedal lets all sustained notes ring out their tails.
-      sustainedNotes.forEach(note => activeInstrument.triggerRelease(note));
+      sustainedNotes.forEach(({ instName, note, manualIdx }) => {
+        const inst = instruments[instName];
+        if (inst) inst.triggerRelease(manualIdx, note);
+      });
       sustainedNotes.clear();
     }
   }
 
   // === Multitouch ===
+  // getKeyAtPoint returns { manualIdx, note, posY } so noteOn/Off route
+  // correctly even when a finger slides between manuals. posY is 0–1
+  // where 0 = top of the key (soft) and 1 = bottom (firm) — used for
+  // touch-sensitive velocity.
   function getKeyAtPoint(x, y) {
     const els = document.elementsFromPoint(x, y);
     for (const el of els) {
-      if (el.classList && el.classList.contains('key')) return el.dataset.note;
+      if (el.classList && el.classList.contains('key')) {
+        const kb = el.closest('.keyboard');
+        if (kb) {
+          const rect = el.getBoundingClientRect();
+          const posY = Math.max(0, Math.min(1, (y - rect.top) / rect.height));
+          return {
+            manualIdx: parseInt(kb.dataset.manualIdx, 10),
+            note: el.dataset.note,
+            posY,
+          };
+        }
+      }
     }
     return null;
   }
@@ -820,10 +1862,10 @@
     kb.addEventListener('touchstart', (e) => {
       e.preventDefault();
       for (const t of e.changedTouches) {
-        const note = getKeyAtPoint(t.clientX, t.clientY);
-        if (note) {
-          touchToNote.set(t.identifier, note);
-          noteOn(note, t.identifier);
+        const hit = getKeyAtPoint(t.clientX, t.clientY);
+        if (hit) {
+          touchToKey.set(t.identifier, hit);
+          noteOn(hit.manualIdx, hit.note, t.identifier, posToVelocity(hit.posY));
         }
       }
     }, { passive: false });
@@ -831,15 +1873,27 @@
     kb.addEventListener('touchmove', (e) => {
       e.preventDefault();
       for (const t of e.changedTouches) {
-        const newNote = getKeyAtPoint(t.clientX, t.clientY);
-        const oldNote = touchToNote.get(t.identifier);
-        if (newNote !== oldNote) {
-          if (oldNote) noteOff(oldNote, t.identifier);
-          if (newNote) {
-            touchToNote.set(t.identifier, newNote);
-            noteOn(newNote, t.identifier);
+        const newHit = getKeyAtPoint(t.clientX, t.clientY);
+        const oldHit = touchToKey.get(t.identifier);
+        const same = newHit && oldHit &&
+          newHit.manualIdx === oldHit.manualIdx && newHit.note === oldHit.note;
+        if (!same) {
+          if (oldHit) noteOff(oldHit.manualIdx, oldHit.note, t.identifier);
+          if (newHit) {
+            touchToKey.set(t.identifier, newHit);
+            noteOn(newHit.manualIdx, newHit.note, t.identifier, posToVelocity(newHit.posY));
           } else {
-            touchToNote.delete(t.identifier);
+            touchToKey.delete(t.identifier);
+          }
+        } else if (newHit) {
+          // Same key, but finger has moved within it — update expression
+          // for the synth so volume tracks finger position. Piano's
+          // setExpression is a no-op (samples can't be modulated this
+          // way) so this is safe to call regardless of instrument.
+          touchToKey.set(t.identifier, newHit);  // keep posY current
+          const inst = instruments[MANUALS[newHit.manualIdx].instrument];
+          if (inst && inst.setExpression) {
+            inst.setExpression(newHit.manualIdx, posToVelocity(newHit.posY));
           }
         }
       }
@@ -848,27 +1902,43 @@
     function endTouches(e) {
       e.preventDefault();
       for (const t of e.changedTouches) {
-        const note = touchToNote.get(t.identifier);
-        if (note) noteOff(note, t.identifier);
-        touchToNote.delete(t.identifier);
+        const hit = touchToKey.get(t.identifier);
+        if (hit) noteOff(hit.manualIdx, hit.note, t.identifier);
+        touchToKey.delete(t.identifier);
       }
     }
     kb.addEventListener('touchend', endTouches, { passive: false });
     kb.addEventListener('touchcancel', endTouches, { passive: false });
 
-    // Mouse fallback (desktop testing)
+    // Mouse fallback (desktop testing). mouseHit holds {manualIdx, note, posY}.
     kb.addEventListener('mousedown', (e) => {
       mouseDown = true;
-      const n = getKeyAtPoint(e.clientX, e.clientY);
-      if (n) { mouseNote = n; noteOn(n, 'mouse'); }
+      const hit = getKeyAtPoint(e.clientX, e.clientY);
+      if (hit) {
+        mouseHit = hit;
+        noteOn(hit.manualIdx, hit.note, 'mouse', posToVelocity(hit.posY));
+      }
     });
     kb.addEventListener('mousemove', (e) => {
       if (!mouseDown) return;
-      const n = getKeyAtPoint(e.clientX, e.clientY);
-      if (n !== mouseNote) {
-        if (mouseNote) noteOff(mouseNote, 'mouse');
-        if (n) { mouseNote = n; noteOn(n, 'mouse'); }
-        else mouseNote = null;
+      const hit = getKeyAtPoint(e.clientX, e.clientY);
+      const same = hit && mouseHit &&
+        hit.manualIdx === mouseHit.manualIdx && hit.note === mouseHit.note;
+      if (!same) {
+        if (mouseHit) noteOff(mouseHit.manualIdx, mouseHit.note, 'mouse');
+        if (hit) {
+          mouseHit = hit;
+          noteOn(hit.manualIdx, hit.note, 'mouse', posToVelocity(hit.posY));
+        } else {
+          mouseHit = null;
+        }
+      } else if (hit) {
+        // Same key, finger drifting within it — update synth expression.
+        mouseHit = hit;
+        const inst = instruments[MANUALS[hit.manualIdx].instrument];
+        if (inst && inst.setExpression) {
+          inst.setExpression(hit.manualIdx, posToVelocity(hit.posY));
+        }
       }
     });
   }
@@ -886,6 +1956,468 @@
       setSustain(false);
     }
     return true;
+  }
+
+  // === MIDI clip slots ===
+  // Four memory slots for recording short MIDI snippets. Each slot has
+  // 4 states: empty / recording / loaded / playing. Tap to advance,
+  // long-press to erase a loaded clip back to empty.
+  //
+  // Lifecycle:
+  //   empty     -> tap -> recording (events captured to clip[slot].events)
+  //   recording -> tap -> loaded (clip stored, ready to play)
+  //   loaded    -> tap -> playing (events scheduled via setTimeout)
+  //   playing   -> tap -> loaded (playback stopped, clip preserved)
+  //   loaded    -> long-press -> empty (clip cleared)
+  //
+  // Recording is one-shot. Looping might be added later.
+  const NUM_CLIPS = 4;
+  const clips = new Array(NUM_CLIPS).fill(null);  // {events, duration} or null
+  const clipState = new Array(NUM_CLIPS).fill('empty');
+  const clipTimers = new Array(NUM_CLIPS).fill(null).map(() => []);  // setTimeout IDs
+  let activeRecordingSlot = -1;
+  let recordingStartTime = 0;
+  const LONG_PRESS_MS = 600;
+
+  function nowMs() {
+    return performance.now();
+  }
+
+  // Called from noteOn/noteOff with the same args. If recording, captures
+  // the event with a timestamp relative to recording start.
+  function captureEvent(type, manualIdx, note, vel) {
+    if (activeRecordingSlot < 0) return;
+    const slot = activeRecordingSlot;
+    if (!clips[slot]) clips[slot] = { events: [], duration: 0 };
+    const t = nowMs() - recordingStartTime;
+    clips[slot].events.push({ t, type, manualIdx, note, vel });
+  }
+
+  // Capture a sustain pedal change into the active recording. Sustain
+  // is global (affects both manuals), so the event uses manualIdx: -1
+  // and no note data. type='sustain', vel=1 means pedal-down, vel=0
+  // means pedal-up.
+  function captureSustain(on) {
+    if (activeRecordingSlot < 0) return;
+    const slot = activeRecordingSlot;
+    if (!clips[slot]) clips[slot] = { events: [], duration: 0 };
+    const t = nowMs() - recordingStartTime;
+    clips[slot].events.push({ t, type: 'sustain', manualIdx: -1, note: null, vel: on ? 1 : 0 });
+  }
+
+  function setClipState(slot, state) {
+    clipState[slot] = state;
+    const btn = document.querySelector(`.clip-btn[data-slot="${slot}"]`);
+    if (!btn) return;
+    btn.classList.remove('recording', 'loaded', 'playing');
+    if (state !== 'empty') btn.classList.add(state);
+  }
+
+  function startRecording(slot) {
+    // If anything else is recording, stop it first
+    if (activeRecordingSlot >= 0) stopRecording();
+    activeRecordingSlot = slot;
+    recordingStartTime = nowMs();
+    clips[slot] = { events: [], duration: 0 };
+    setClipState(slot, 'recording');
+    // If sustain is already on when recording starts (e.g. locked),
+    // capture a t=0 sustain-on event so playback starts in the right
+    // state. Otherwise the recorded notes wouldn't sustain on playback.
+    if (sustainOn) captureSustain(true);
+  }
+
+  function stopRecording() {
+    if (activeRecordingSlot < 0) return;
+    const slot = activeRecordingSlot;
+    const clip = clips[slot];
+    activeRecordingSlot = -1;
+    if (!clip || clip.events.length === 0) {
+      // Empty recording — go back to empty state, don't store nothing
+      clips[slot] = null;
+      setClipState(slot, 'empty');
+      return;
+    }
+    // Trim silence at both ends:
+    //   head — shift all events so the first one happens at t=0
+    //   tail — set duration to the last event's time (which is the
+    //          actual last note-off, since noteOff is captured too).
+    // Result: the clip starts immediately on play and ends right when
+    // the last note finishes ringing, regardless of recording pauses.
+    const firstT = clip.events[0].t;
+    if (firstT > 0) {
+      clip.events.forEach(ev => { ev.t -= firstT; });
+    }
+    const lastT = clip.events[clip.events.length - 1].t;
+    clip.duration = lastT;
+    setClipState(slot, 'loaded');
+  }
+
+  function playClip(slot) {
+    const clip = clips[slot];
+    if (!clip) return;
+    setClipState(slot, 'playing');
+    // Track per-clip sustain so playback can hold notes on its own,
+    // independent of the user's live pedal state. If sustain is on,
+    // noteOffs go into pbSustained instead of triggering release.
+    // When sustain turns off, those held notes are released.
+    const pbSustainState = { on: false };
+    const pbSustained = new Map();  // key "manualIdx:note" → {instName, manualIdx, note}
+
+    function pbNoteOn(manualIdx, note, vel) {
+      // If the pitch is currently being sustained from playback, release
+      // the prior voice first so PolySynth doesn't allocate a duplicate
+      // (mirrors the live re-articulation logic).
+      const key = manualIdx + ':' + note;
+      if (pbSustained.has(key)) {
+        const { instName, note: n, manualIdx: m } = pbSustained.get(key);
+        const inst = instruments[instName];
+        if (inst) inst.triggerRelease(m, n);
+        pbSustained.delete(key);
+      }
+      noteOn(manualIdx, note, 'pb-' + slot + '-' + note, vel);
+    }
+    function pbNoteOff(manualIdx, note) {
+      const tid = 'pb-' + slot + '-' + note;
+      if (pbSustainState.on) {
+        // Hold the note: store the info needed to release later, but
+        // remove the touch id from activeNotes so a re-articulation can
+        // start fresh. We need the active info first, before noteOff
+        // clears it.
+        const key = manualIdx + ':' + note;
+        const instName = MANUALS[manualIdx].instrument;
+        pbSustained.set(key, { instName, note, manualIdx });
+        // Tell the global noteOff layer to clean up its bookkeeping
+        // (visual class, activeNotes set) but skip the actual release —
+        // we hijack by temporarily clearing then re-adding the keep-alive.
+        // Simpler: just don't call noteOff at all, and let our pbSustained
+        // map track the held note. Drop it from activeNotes manually.
+        const set = activeNotes.get(key);
+        if (set) {
+          set.delete(tid);
+          if (set.size === 0) activeNotes.delete(key);
+        }
+      } else {
+        noteOff(manualIdx, note, tid);
+      }
+    }
+    function pbSetSustain(on) {
+      pbSustainState.on = on;
+      if (!on) {
+        // Release everything that was held.
+        pbSustained.forEach(({ instName, note, manualIdx }) => {
+          const inst = instruments[instName];
+          if (inst) inst.triggerRelease(manualIdx, note);
+        });
+        pbSustained.clear();
+      }
+    }
+
+    // Schedule each event as a setTimeout offset from the start.
+    // Using setTimeout (not Tone.Transport) keeps each clip's playback
+    // independent and avoids conflicts if multiple clips play at once.
+    clip.events.forEach(ev => {
+      const id = setTimeout(() => {
+        if (ev.type === 'on') {
+          pbNoteOn(ev.manualIdx, ev.note, ev.vel);
+        } else if (ev.type === 'off') {
+          pbNoteOff(ev.manualIdx, ev.note);
+        } else if (ev.type === 'sustain') {
+          pbSetSustain(ev.vel >= 0.5);
+        }
+      }, ev.t);
+      clipTimers[slot].push(id);
+    });
+    // Schedule the end-of-clip transition back to 'loaded'. Also force
+    // sustain off and release any still-held notes from this playback.
+    const endId = setTimeout(() => {
+      pbSetSustain(false);
+      setClipState(slot, 'loaded');
+      clipTimers[slot] = [];
+    }, clip.duration + 50);
+    clipTimers[slot].push(endId);
+    // Stash the playback's sustained-notes map onto the slot so
+    // stopPlayback can release them if the user stops mid-clip.
+    clipTimers[slot]._pbSustained = pbSustained;
+  }
+
+  function stopPlayback(slot) {
+    clipTimers[slot].forEach(id => clearTimeout(id));
+    // Release any playback-sustained notes still held.
+    if (clipTimers[slot]._pbSustained) {
+      clipTimers[slot]._pbSustained.forEach(({ instName, note, manualIdx }) => {
+        const inst = instruments[instName];
+        if (inst) inst.triggerRelease(manualIdx, note);
+      });
+    }
+    clipTimers[slot] = [];
+    // Release any notes from this clip that are currently sounding
+    // (they'd otherwise hang since we're cancelling their scheduled noteOff).
+    const clip = clips[slot];
+    if (clip) {
+      // Find notes that had an 'on' but no matching 'off' yet. Simplest:
+      // release all notes whose touch id matches this slot's playback ids.
+      for (const [key, set] of activeNotes) {
+        for (const tid of set) {
+          if (typeof tid === 'string' && tid.startsWith('pb-' + slot + '-')) {
+            const [mIdxStr, note] = key.split(':');
+            noteOff(parseInt(mIdxStr, 10), note, tid);
+          }
+        }
+      }
+    }
+    setClipState(slot, 'loaded');
+  }
+
+  function eraseClip(slot) {
+    if (activeRecordingSlot === slot) {
+      activeRecordingSlot = -1;
+    }
+    stopPlayback(slot);  // safe even if not playing
+    clips[slot] = null;
+    clipTimers[slot] = [];
+    setClipState(slot, 'empty');
+  }
+
+  function clipAction(slot) {
+    const state = clipState[slot];
+    if (state === 'empty') startRecording(slot);
+    else if (state === 'recording') stopRecording();
+    else if (state === 'loaded') playClip(slot);
+    else if (state === 'playing') stopPlayback(slot);
+  }
+
+  function attachClipHandlers(btn, slot) {
+    // Tap to cycle state; long-press on a loaded/playing clip opens the
+    // export/delete dialog. The button lives in the device root (not
+    // inside a keyboard), so no preventDefault conflicts.
+    let pressTimer = null;
+    let longPressed = false;
+
+    function startPress() {
+      longPressed = false;
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        longPressed = true;
+        // Only show dialog if there's something to act on. Empty slots
+        // can't be exported or deleted; recording state shouldn't open
+        // the dialog (user just stops recording with another tap).
+        const state = clipState[slot];
+        if (state === 'loaded' || state === 'playing') {
+          openClipDialog(slot);
+        }
+      }, LONG_PRESS_MS);
+    }
+    function endPress() {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      if (!longPressed) clipAction(slot);
+    }
+    function cancelPress() {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    }
+
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startPress();
+    }, { passive: false });
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      endPress();
+    }, { passive: false });
+    btn.addEventListener('touchcancel', cancelPress, { passive: false });
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startPress();
+    });
+    btn.addEventListener('mouseup', endPress);
+    btn.addEventListener('mouseleave', cancelPress);
+  }
+
+  // === Clip dialog ===
+  // Built lazily on first open. Reused for all slots — slot context is
+  // captured in the action handlers each time the dialog opens.
+  let clipDialogEl = null;
+  let clipDialogActiveSlot = -1;
+
+  function buildClipDialog() {
+    const overlay = document.createElement('div');
+    overlay.className = 'clip-dialog-overlay';
+    const dialog = document.createElement('div');
+    dialog.className = 'clip-dialog';
+    const title = document.createElement('div');
+    title.className = 'clip-dialog-title';
+    title.textContent = 'CLIP';
+    const actions = document.createElement('div');
+    actions.className = 'clip-dialog-actions';
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'clip-dialog-btn';
+    exportBtn.textContent = 'EXPORT MIDI';
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'clip-dialog-btn danger';
+    deleteBtn.textContent = 'DELETE';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'clip-dialog-cancel';
+    cancelBtn.textContent = 'CANCEL';
+
+    actions.appendChild(exportBtn);
+    actions.appendChild(deleteBtn);
+    dialog.appendChild(title);
+    dialog.appendChild(actions);
+    dialog.appendChild(cancelBtn);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // Tapping outside the dialog (on the overlay) cancels.
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeClipDialog();
+    });
+    // Don't let clicks inside the dialog box itself bubble to the
+    // overlay (which would close it).
+    dialog.addEventListener('click', (e) => e.stopPropagation());
+
+    exportBtn.addEventListener('click', () => {
+      if (clipDialogActiveSlot >= 0) exportClipAsMidi(clipDialogActiveSlot);
+      closeClipDialog();
+    });
+    deleteBtn.addEventListener('click', () => {
+      if (clipDialogActiveSlot >= 0) eraseClip(clipDialogActiveSlot);
+      closeClipDialog();
+    });
+    cancelBtn.addEventListener('click', closeClipDialog);
+
+    return { overlay, title };
+  }
+
+  function openClipDialog(slot) {
+    if (!clipDialogEl) clipDialogEl = buildClipDialog();
+    clipDialogActiveSlot = slot;
+    clipDialogEl.title.textContent = `CLIP ${slot + 1}`;
+    clipDialogEl.overlay.classList.add('open');
+  }
+
+  function closeClipDialog() {
+    if (!clipDialogEl) return;
+    clipDialogEl.overlay.classList.remove('open');
+    clipDialogActiveSlot = -1;
+  }
+
+  // === MIDI file export ===
+  // Constructs a Standard MIDI File (SMF) Type 1 from a clip's events.
+  // Two tracks: one per manual, on channels 1 and 2. Variable-length
+  // delta times computed from the captured millisecond timestamps.
+  // Tempo: 120 BPM, resolution: 480 ticks per quarter note. So 1 tick
+  // = 60000 / (120 * 480) ≈ 1.04 ms — fine resolution for our purposes.
+  function noteNameToMidi(name) {
+    // e.g. "C4" → 60, "C#4" → 61, "Bb3" → 58
+    const match = name.match(/^([A-G])(#|b)?(-?\d+)$/);
+    if (!match) return 60;
+    const [, letter, accidental, octStr] = match;
+    const baseSemitones = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    let n = baseSemitones[letter];
+    if (accidental === '#') n += 1;
+    else if (accidental === 'b') n -= 1;
+    n += (parseInt(octStr, 10) + 1) * 12;
+    return Math.max(0, Math.min(127, n));
+  }
+
+  function vlq(value) {
+    // Variable-length quantity encoding for MIDI delta times.
+    // Each byte uses 7 bits of the value; high bit set = "more bytes follow".
+    if (value < 0) value = 0;
+    const bytes = [value & 0x7f];
+    value >>>= 7;
+    while (value > 0) {
+      bytes.unshift((value & 0x7f) | 0x80);
+      value >>>= 7;
+    }
+    return bytes;
+  }
+
+  function buildMidiFile(clip) {
+    const TICKS_PER_QUARTER = 480;
+    const BPM = 120;
+    const MS_PER_TICK = 60000 / (BPM * TICKS_PER_QUARTER);  // ~1.04 ms
+
+    // Sort events into per-manual buckets so each goes on its own track
+    // and channel. Sustain events (manualIdx = -1) are global — duplicate
+    // them onto BOTH tracks so each channel applies sustain to its own
+    // notes correctly when imported into a DAW.
+    const tracks = [[], []];
+    const sustainEvents = [];
+    clip.events.forEach(ev => {
+      if (ev.type === 'sustain') {
+        sustainEvents.push(ev);
+      } else {
+        tracks[ev.manualIdx].push(ev);
+      }
+    });
+    // Mirror sustain events onto both tracks
+    sustainEvents.forEach(ev => {
+      tracks[0].push(ev);
+      tracks[1].push(ev);
+    });
+    tracks.forEach(t => t.sort((a, b) => a.t - b.t));
+
+    function buildTrackChunk(events, channel) {
+      const data = [];
+      let lastTick = 0;
+      events.forEach(ev => {
+        const tick = Math.round(ev.t / MS_PER_TICK);
+        const delta = tick - lastTick;
+        lastTick = tick;
+        data.push(...vlq(delta));
+        if (ev.type === 'sustain') {
+          // Control Change: status 0xB0 | channel, controller 64 (sustain),
+          // value 0 (off) or 127 (on).
+          const status = 0xb0 | (channel & 0x0f);
+          const value = ev.vel >= 0.5 ? 127 : 0;
+          data.push(status, 64, value);
+        } else {
+          const status = (ev.type === 'on' ? 0x90 : 0x80) | (channel & 0x0f);
+          const noteNum = noteNameToMidi(ev.note);
+          const vel = ev.type === 'on'
+            ? Math.max(1, Math.min(127, Math.round((ev.vel || 0.78) * 127)))
+            : 0;
+          data.push(status, noteNum, vel);
+        }
+      });
+      // End-of-track meta event
+      data.push(0x00, 0xff, 0x2f, 0x00);
+
+      // Wrap in MTrk chunk: 4 bytes "MTrk" + 4 bytes length + data
+      const chunk = [0x4d, 0x54, 0x72, 0x6b];
+      const len = data.length;
+      chunk.push((len >> 24) & 0xff, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff);
+      chunk.push(...data);
+      return chunk;
+    }
+
+    // Header chunk (MThd): format 1, 2 tracks, ticks-per-quarter division
+    const header = [
+      0x4d, 0x54, 0x68, 0x64,  // "MThd"
+      0x00, 0x00, 0x00, 0x06,  // chunk length = 6
+      0x00, 0x01,              // format = 1 (multi-track)
+      0x00, 0x02,              // ntrks = 2
+      (TICKS_PER_QUARTER >> 8) & 0xff, TICKS_PER_QUARTER & 0xff,
+    ];
+
+    const track0 = buildTrackChunk(tracks[0], 0);  // top manual on channel 1
+    const track1 = buildTrackChunk(tracks[1], 1);  // bottom manual on channel 2
+    return new Uint8Array([...header, ...track0, ...track1]);
+  }
+
+  function exportClipAsMidi(slot) {
+    const clip = clips[slot];
+    if (!clip || !clip.events || clip.events.length === 0) return;
+    const bytes = buildMidiFile(clip);
+    const blob = new Blob([bytes], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clip-${slot + 1}.mid`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function attachSustainHandlers(bar) {
@@ -921,10 +2453,10 @@
     }
   });
 
-  let mouseDown = false, mouseNote = null;
+  let mouseDown = false, mouseHit = null;
   window.addEventListener('mouseup', () => {
     mouseDown = false;
-    if (mouseNote) { noteOff(mouseNote, 'mouse'); mouseNote = null; }
+    if (mouseHit) { noteOff(mouseHit.manualIdx, mouseHit.note, 'mouse'); mouseHit = null; }
   });
 
   // === Computer keyboard for desktop testing ===
@@ -948,7 +2480,7 @@
     pressed.add(k);
     const map = KEY_MAP[k];
     const note = map.n + (MANUALS[map.m].octaveStart + (map.o || 0));
-    noteOn(note, 'kb-' + k);
+    noteOn(map.m, note, 'kb-' + k);
   });
   window.addEventListener('keyup', (e) => {
     const k = e.key.toLowerCase();
@@ -957,7 +2489,7 @@
     const map = KEY_MAP[k];
     if (!map) return;
     const note = map.n + (MANUALS[map.m].octaveStart + (map.o || 0));
-    noteOff(note, 'kb-' + k);
+    noteOff(map.m, note, 'kb-' + k);
   });
 
   // Prevent iOS double-tap zoom
@@ -967,6 +2499,22 @@
     if (now - lastTouchEnd <= 300) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
+
+  // Start the AudioContext on the very first user interaction — anywhere
+  // on the page, not just on a key — so the first note doesn't pay the
+  // startup cost. iOS requires a user gesture to unlock audio; touchstart
+  // and mousedown both qualify.
+  function unlockAudio() {
+    if (audioStarted) return;
+    audioStarted = true;
+    Tone.start();
+    document.removeEventListener('touchstart', unlockAudio, true);
+    document.removeEventListener('mousedown', unlockAudio, true);
+    document.removeEventListener('keydown', unlockAudio, true);
+  }
+  document.addEventListener('touchstart', unlockAudio, true);
+  document.addEventListener('mousedown', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
 
   // Init
   buildAllManuals();
