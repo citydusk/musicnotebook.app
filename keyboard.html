@@ -235,21 +235,30 @@
     text-shadow: 0 0 4px rgba(75, 175, 225, 0.45), 0 0 1px rgba(190, 230, 255, 0.5);
   }
 
-  /* === INSTRUMENT TOGGLE === */
-  /* Per-manual instrument switcher — a vertical pill-shaped slider in
-     the empty corner of the sharps row, above the last B and final C
-     natural. Matches the Music Notebook app slider style: dark pill
-     track, fat round off-white knob that slides between two positions,
-     labels outside the track. PIANO on top, SYNTH on bottom. */
-  .inst-toggle {
+  /* === UPPER CONTROLS === */
+  /* The empty top-right corner of the sharps grid (above the last B and
+     final C) houses two per-manual controls side by side: the instrument
+     toggle on the left, and a volume knob on the right. The container is
+     right-anchored so the knob's right edge aligns with the keyboard's
+     right edge, and both controls vertically center within the sharps
+     row (which is the height of a natural key). */
+  .upper-controls {
     grid-row: 1;
     grid-column: 28 / span 3;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: max(10px, calc(var(--key-w) * 0.2));
+    padding: 0;
+  }
+
+  .inst-toggle {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: max(2px, calc(var(--key-w) * 0.04));
-    padding: 0;
   }
 
   /* Tiny labels above and below the track — bright when active, dim when
@@ -278,7 +287,7 @@
 
   /* Pill-shaped vertical track — narrow, dark slate, fully rounded ends. */
   .inst-switch {
-    width: clamp(14px, calc(var(--key-w) * 0.32), 22px);
+    width: clamp(14px, calc(var(--key-w) * 0.3), 22px);
     height: clamp(28px, calc(var(--key-w) * 0.7), 48px);
     position: relative;
     background: #14181f;
@@ -316,6 +325,116 @@
   .inst-switch.synth::before {
     top: auto;
     bottom: 8%;
+  }
+
+  /* === VOLUME KNOB === */
+  /* A small rotary dial sitting next to the instrument toggle. Same
+     visual family — off-white face matching the toggle knob, slate
+     housing — but circular like a real synth potentiometer. Vertical
+     drag rotates it; snaps to 12 o'clock (unity) when released near
+     center. Two faint tick marks at the rotation extremes show the
+     range without being noisy. */
+  .vol-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: max(2px, calc(var(--key-w) * 0.04));
+  }
+
+  .vol-toggle .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(4.5px, calc(var(--key-w) * 0.085), 7px);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: rgba(240, 246, 255, 0.85);
+    text-shadow:
+      0 0 4px rgba(170, 200, 255, 0.5),
+      0 0 1px rgba(220, 232, 255, 0.6);
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Outer housing — a dark ring that the knob sits inside. The knob
+     itself rotates within this housing. Sized to match the height of
+     the instrument switch so the two controls feel balanced. */
+  .vol-knob-housing {
+    width: clamp(26px, calc(var(--key-w) * 0.64), 44px);
+    height: clamp(26px, calc(var(--key-w) * 0.64), 44px);
+    position: relative;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 30%, #232a36 0%, #14181f 70%, #0e1218 100%);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.7),
+      0 1px 2px rgba(0,0,0,0.5),
+      0 1px 0 rgba(180, 200, 240, 0.06) inset;
+    cursor: grab;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .vol-knob-housing:active {
+    cursor: grabbing;
+  }
+
+  /* Two faint tick marks on the outer ring at the rotation extremes
+     (7 o'clock and 5 o'clock). They sit just outside the knob face,
+     giving a sense of the range without dominating. */
+  .vol-knob-housing::before,
+  .vol-knob-housing::after {
+    content: '';
+    position: absolute;
+    width: 8%;
+    height: 12%;
+    background: rgba(190, 210, 255, 0.22);
+    border-radius: 1px;
+    top: 76%;
+  }
+  .vol-knob-housing::before {
+    left: 14%;
+    transform: rotate(45deg);
+    transform-origin: center;
+  }
+  .vol-knob-housing::after {
+    right: 14%;
+    transform: rotate(-45deg);
+    transform-origin: center;
+  }
+
+  /* The knob face itself — circular, off-white, with a notch indicator
+     line that rotates to show the current value. Notch is rendered via
+     a CSS gradient so it scales perfectly with the knob. */
+  .vol-knob-face {
+    position: absolute;
+    left: 12%;
+    top: 12%;
+    width: 76%;
+    height: 76%;
+    border-radius: 50%;
+    background:
+      /* The indicator notch — a vertical dark line from center to top,
+         drawn with a linear gradient. Rotates with the knob. */
+      linear-gradient(180deg,
+        rgba(60, 50, 40, 0.85) 0%,
+        rgba(60, 50, 40, 0.85) 32%,
+        transparent 32%,
+        transparent 100%),
+      /* Then the off-white face material underneath. */
+      linear-gradient(155deg, #f4f0e6 0%, #ddd6c5 100%);
+    background-size: 8% 100%, 100% 100%;
+    background-position: center top, center center;
+    background-repeat: no-repeat;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 -1px 1px rgba(0, 0, 0, 0.15) inset,
+      0 0 0 0.5px rgba(0, 0, 0, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.4);
+    transform: rotate(0deg);
+    pointer-events: none;
+  }
+  .vol-knob-face.snapping {
+    transition: transform 0.15s ease;
   }
 
   /* === SUSTAIN BAR === */
@@ -591,10 +710,11 @@
   // pitch, so together they cover the useful range of a piano like the
   // manuals on a pipe organ console. Top manual = treble range (right hand),
   // bottom manual = bass range (left hand). Each carries its own selected
-  // instrument so the player can split (e.g., synth pad over piano bass).
+  // instrument and volume so the player can split (e.g., synth pad over
+  // piano bass at different mix levels).
   const MANUALS = [
-    { octaveStart: 4, instrument: 'piano' },  // top:    C4 — C6
-    { octaveStart: 2, instrument: 'piano' },  // bottom: C2 — C4
+    { octaveStart: 4, instrument: 'piano', volume: 0.5 },  // top:    C4 — C6
+    { octaveStart: 2, instrument: 'piano', volume: 0.5 },  // bottom: C2 — C4
   ];
 
   // Instruments — each exposes triggerAttack/triggerRelease so noteOn/Off
@@ -675,10 +795,12 @@
 
       buildManual(kb, m.octaveStart);
 
-      // Instrument toggle — vertical pill slider in the empty top-right
-      // corner of the sharps grid. Labels above and below the track,
-      // round off-white knob slides between positions, tap anywhere to
-      // flip. Style matches Music Notebook app convention.
+      // Upper-right corner controls — instrument toggle on the left,
+      // volume slider on the right. Both per-manual.
+      const upper = document.createElement('div');
+      upper.className = 'upper-controls';
+
+      // --- Instrument toggle ---
       const toggle = document.createElement('div');
       toggle.className = 'inst-toggle';
       const lblPiano = document.createElement('span');
@@ -728,7 +850,29 @@
       toggle.appendChild(lblPiano);
       toggle.appendChild(sw);
       toggle.appendChild(lblSynth);
-      kb.appendChild(toggle);
+      upper.appendChild(toggle);
+
+      // --- Volume knob ---
+      // Rotary dial. Vertical drag rotates the knob; snaps to 12 o'clock
+      // (unity gain) when released within a small detent zone.
+      const vol = document.createElement('div');
+      vol.className = 'vol-toggle';
+      const volLblTop = document.createElement('span');
+      volLblTop.className = 'lbl';
+      volLblTop.textContent = 'VOL';
+      const volHousing = document.createElement('div');
+      volHousing.className = 'vol-knob-housing';
+      volHousing.setAttribute('role', 'slider');
+      volHousing.setAttribute('aria-label', `Volume for manual ${idx + 1}`);
+      const volFace = document.createElement('div');
+      volFace.className = 'vol-knob-face';
+      volHousing.appendChild(volFace);
+      vol.appendChild(volLblTop);
+      vol.appendChild(volHousing);
+      upper.appendChild(vol);
+      attachVolumeHandlers(volHousing, volFace, idx);
+
+      kb.appendChild(upper);
     });
 
     // Sustain bar: thin spacebar-style hold control under the bottom manual.
@@ -753,12 +897,13 @@
     m.octaveStart = newOct;
     const wrap = document.querySelector(`.manual[data-manual-idx="${manualIdx}"]`);
     const kb = wrap.querySelector('.keyboard');
-    // Preserve the instrument toggle through the rebuild — it lives in
-    // the grid alongside the keys but isn't rebuilt by buildManual.
-    const toggle = kb.querySelector('.inst-toggle');
+    // Preserve the upper controls (toggle + volume slider) through the
+    // rebuild — they live in the grid alongside the keys but aren't
+    // rebuilt by buildManual.
+    const upper = kb.querySelector('.upper-controls');
     kb.innerHTML = '';
     buildManual(kb, m.octaveStart);
-    if (toggle) kb.appendChild(toggle);
+    if (upper) kb.appendChild(upper);
     refreshOctaveButtonStates();
   }
 
@@ -845,6 +990,119 @@
     }
   }
 
+  // === Volume knob ===
+  // The knob shows volume as rotation: 0.0 = -135° (full counter-clockwise,
+  // 7 o'clock), 0.5 = 0° (12 o'clock straight up = unity gain), 1.0 = +135°
+  // (full clockwise, 5 o'clock). Vertical drag is the gesture (more
+  // touch-friendly than rotational on a small target): drag up to turn up,
+  // drag down to turn down. Snaps to 12 o'clock (unity) when released
+  // within a small detent zone around 0.5.
+  const SNAP_ZONE = 0.12;       // ±12% around 0.5 snaps to center on release
+  const SNAP_TARGET = 0.5;
+  const ROTATION_RANGE = 135;   // degrees from center to each end
+  const DRAG_PIXELS_PER_FULL_RANGE = 120;  // pixels to drag for full 0→1
+
+  function setKnobRotation(face, vol) {
+    // Map 0..1 to -135°..+135°
+    const deg = (vol - 0.5) * 2 * ROTATION_RANGE;
+    face.style.transform = `rotate(${deg}deg)`;
+  }
+
+  function applyVolume(manualIdx, vol) {
+    MANUALS[manualIdx].volume = vol;
+    // Apply to both instruments — only the one in use will actually
+    // produce sound, but keeping both in sync means switching instruments
+    // mid-play preserves the volume setting.
+    Object.values(instruments).forEach(inst => {
+      if (inst && inst.setVolume) inst.setVolume(manualIdx, vol);
+    });
+  }
+
+  function attachVolumeHandlers(housing, face, manualIdx) {
+    // Initial position from MANUALS data
+    setKnobRotation(face, MANUALS[manualIdx].volume);
+    applyVolume(manualIdx, MANUALS[manualIdx].volume);
+
+    let dragging = false;
+    let dragStartY = 0;
+    let dragStartVol = 0;
+
+    function startDrag(clientY) {
+      dragging = true;
+      dragStartY = clientY;
+      dragStartVol = MANUALS[manualIdx].volume;
+      face.classList.remove('snapping');
+    }
+    function updateFromPoint(clientY) {
+      if (!dragging) return;
+      // Drag up = positive volume change. Browser y axis goes down, so
+      // negate the delta.
+      const dy = -(clientY - dragStartY);
+      const dv = dy / DRAG_PIXELS_PER_FULL_RANGE;
+      const v = Math.max(0, Math.min(1, dragStartVol + dv));
+      setKnobRotation(face, v);
+      applyVolume(manualIdx, v);
+    }
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      const v = MANUALS[manualIdx].volume;
+      if (Math.abs(v - SNAP_TARGET) < SNAP_ZONE) {
+        face.classList.add('snapping');
+        setKnobRotation(face, SNAP_TARGET);
+        applyVolume(manualIdx, SNAP_TARGET);
+        // Drop the snapping class after the animation so subsequent
+        // drags are immediate (no easing lag).
+        setTimeout(() => face.classList.remove('snapping'), 180);
+      }
+    }
+
+    // Touch
+    housing.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      startDrag(e.changedTouches[0].clientY);
+    }, { passive: false });
+    housing.addEventListener('touchmove', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      updateFromPoint(e.changedTouches[0].clientY);
+    }, { passive: false });
+    housing.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      endDrag();
+    }, { passive: false });
+    housing.addEventListener('touchcancel', endDrag, { passive: false });
+
+    // Mouse — listen on window for move/up so dragging works even if
+    // cursor leaves the knob.
+    housing.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      startDrag(e.clientY);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (dragging) updateFromPoint(e.clientY);
+    });
+    window.addEventListener('mouseup', () => {
+      if (dragging) endDrag();
+    });
+
+    // Double-click / double-tap snaps to center, classic mixer behavior.
+    let lastTap = 0;
+    housing.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const now = Date.now();
+      if (now - lastTap < 350) {
+        face.classList.add('snapping');
+        setKnobRotation(face, SNAP_TARGET);
+        applyVolume(manualIdx, SNAP_TARGET);
+        setTimeout(() => face.classList.remove('snapping'), 180);
+      }
+      lastTap = now;
+    });
+  }
+
   function makeKey(note, kind) {
     const el = document.createElement('div');
     el.className = `key ${kind}`;
@@ -878,23 +1136,26 @@
       },
       onerror: (e) => { console.error(e); }
     }).toDestination();
-    // Wrap with the same (manualIdx, note, ...) signature as the synth so
-    // noteOn/Off doesn't have to special-case which instrument it routes
-    // to. The piano backend itself is shared across manuals (samples are
-    // expensive); manualIdx is accepted but unused.
+    // Per-manual volume scaling for the piano. The Sampler is shared
+    // across both manuals (samples are too expensive to duplicate), so
+    // we apply volume by scaling the velocity at trigger time. This
+    // works for the initial loudness; piano samples decay naturally so
+    // mid-note volume modulation isn't musically required for piano.
+    const pianoVolumes = MANUALS.map(m => m.volume * 2);  // 0..2 range, midpoint=1
     instruments.piano = {
       triggerAttack: (manualIdx, note, time, vel) => {
-        pianoSampler.triggerAttack(note, time, vel);
+        const scaled = Math.max(0, Math.min(1, vel * pianoVolumes[manualIdx]));
+        pianoSampler.triggerAttack(note, time, scaled);
       },
       triggerRelease: (manualIdx, note, time) => {
         pianoSampler.triggerRelease(note, time);
       },
       releaseAll: () => pianoSampler.releaseAll(),
-      // Piano samples can't be expression-modulated meaningfully — the
-      // sample's amplitude envelope is baked in. No-op so the call site
-      // doesn't have to check.
       setExpression: () => {},
-      // Expose the underlying sampler for warmUpSamples.
+      setVolume: (manualIdx, vol) => {
+        // 0..1 input mapped to 0..2 multiplier — midpoint (0.5) = unity gain.
+        pianoVolumes[manualIdx] = vol * 2;
+      },
       _sampler: pianoSampler,
     };
 
@@ -907,25 +1168,50 @@
     sharedReverb.generate();
 
     function buildSynthVoice() {
-      const filter = new Tone.Filter({ frequency: 1400, type: 'lowpass', Q: 0.5 }).connect(sharedReverb);
+      // Master gain — controlled by the volume slider per manual. Sits
+      // at the very end of the voice chain so it scales the final
+      // (already-vibrato'd, already-filtered) signal cleanly. Default
+      // to unity (slider midpoint = 0.5 → gain 1.0).
+      const master = new Tone.Gain(1.0).connect(sharedReverb);
+      const filter = new Tone.Filter({ frequency: 1400, type: 'lowpass', Q: 0.5 }).connect(master);
       const vibrato = new Tone.Vibrato({ frequency: 2.3, depth: 0.014 }).connect(filter);
-      // Expression gain — sits at unity by default, modulated by touchmove
+      // Expression gain — sits before the filter, modulated by touchmove
       // for real-time volume control. Per-voice means each manual's synth
-      // gets its own dynamic level.
+      // gets its own dynamic level. Master is separate so the slider and
+      // the expression don't fight each other.
       const expression = new Tone.Gain(1.0).connect(vibrato);
+      // Polyphony cap of 16 prevents voice-stealing artifacts when playing
+      // fast (default is 32, but with 0.9s release tails that pile up).
+      // Release time dropped from 1.6s to 0.9s — still a pad-like decay
+      // but voices clear out faster, which keeps the synth feeling clean
+      // during fast passages.
       const tri = new Tone.PolySynth(Tone.Synth, {
+        maxPolyphony: 16,
         oscillator: { type: 'triangle' },
-        envelope: { attack: 0.06, decay: 0.6, sustain: 0.7, release: 1.6 }
+        envelope: { attack: 0.06, decay: 0.6, sustain: 0.7, release: 0.9 }
       });
       const sine = new Tone.PolySynth(Tone.Synth, {
+        maxPolyphony: 16,
         oscillator: { type: 'sine' },
-        envelope: { attack: 0.06, decay: 0.6, sustain: 0.7, release: 1.6 }
+        envelope: { attack: 0.06, decay: 0.6, sustain: 0.7, release: 0.9 }
       });
       tri.volume.value = -10;
       sine.volume.value = -12;
       tri.connect(expression);
       sine.connect(expression);
-      return { tri, sine, expression };
+      return { tri, sine, expression, master };
+    }
+
+    // Velocity-sensitive attack: firm hits speak almost immediately
+    // (15ms), soft hits keep the gentle pad swell (90ms). Cubic curve
+    // shifts more of the range toward shorter attacks — feels more
+    // responsive without losing the soft-hit character.
+    function attackTimeFor(vel) {
+      const FAST = 0.015;
+      const SLOW = 0.09;
+      // vel is 0.45–1.0 in our range; normalize to 0..1
+      const t = Math.max(0, Math.min(1, (vel - 0.45) / 0.55));
+      return SLOW - (SLOW - FAST) * t;
     }
 
     // One synth instance per manual. The wrapper exposes triggerAttack/
@@ -936,6 +1222,12 @@
     instruments.synth = {
       triggerAttack: (manualIdx, note, time, vel) => {
         const v = synthVoices[manualIdx];
+        // Update the envelope attack time for the next voice allocation
+        // based on velocity. Tone.PolySynth.set propagates to all voice
+        // configs; the next triggerAttack inherits the new attack time.
+        const a = attackTimeFor(vel);
+        v.tri.set({ envelope: { attack: a } });
+        v.sine.set({ envelope: { attack: a } });
         v.tri.triggerAttack(note, time, vel);
         v.sine.triggerAttack(note, time, vel);
       },
@@ -961,6 +1253,14 @@
         } else {
           v.expression.gain.linearRampToValueAtTime(vel, t + 0.06);
         }
+      },
+      // Smooth ramp prevents audible zipper noise on rapid drag.
+      setVolume: (manualIdx, vol) => {
+        const v = synthVoices[manualIdx];
+        const t = Tone.now();
+        v.master.gain.cancelScheduledValues(t);
+        // 0..1 input mapped to 0..2 multiplier — midpoint (0.5) = unity gain.
+        v.master.gain.linearRampToValueAtTime(vol * 2, t + 0.04);
       },
     };
   }
