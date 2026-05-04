@@ -2454,7 +2454,12 @@
   // the label; raw pitches are what we replay, so weird voicings still
   // sound exactly as input.
   const NUM_CHORDS = 4;
-  const CHORD_CAPTURE_MS = 150;     // window after first note-on
+  const CHORD_CAPTURE_MS = 500;     // window after first note-on. Wide
+                                    // enough that a deliberate strum or
+                                    // staggered chord still lands as one
+                                    // capture, but short enough that two
+                                    // separate chords played in quick
+                                    // succession don't accidentally merge.
   const CHORD_PLAY_MS = 900;        // how long a triggered chord rings
   const chords = new Array(NUM_CHORDS).fill(null);  // {notes:[{manualIdx,note,vel}], symbol} or null
   const chordState = new Array(NUM_CHORDS).fill('empty');
@@ -2515,29 +2520,36 @@
   // Each template is a sorted list of intervals from the root, plus the
   // suffix to append after the root. Order matters: more specific (more
   // notes) before less specific so we match maj7 before maj.
+  // Scope: triads (major, minor, augmented, diminished) and the three
+  // common 7th chords (dom7, maj7, m7). Anything else falls through to
+  // note-list output.
   const CHORD_TEMPLATES = [
     // Tetrads
     { iv: [0,4,7,11], sfx: 'maj7' },
     { iv: [0,4,7,10], sfx: '7'    },
     { iv: [0,3,7,10], sfx: 'm7'   },
-    { iv: [0,3,7,11], sfx: 'mMaj7'},
-    { iv: [0,3,6,10], sfx: 'm7♭5' },  // half-diminished
-    { iv: [0,3,6,9],  sfx: 'dim7' },
-    { iv: [0,4,8,10], sfx: '7♯5'  },
-    { iv: [0,4,7,9],  sfx: '6'    },
-    { iv: [0,3,7,9],  sfx: 'm6'   },
-    { iv: [0,2,7,10], sfx: '9sus' },  // simple 9sus
-    { iv: [0,5,7,10], sfx: '7sus' },
     // Triads
     { iv: [0,4,7],    sfx: ''     },  // major
     { iv: [0,3,7],    sfx: 'm'    },
     { iv: [0,3,6],    sfx: 'dim'  },
     { iv: [0,4,8],    sfx: 'aug'  },
-    { iv: [0,5,7],    sfx: 'sus4' },
-    { iv: [0,2,7],    sfx: 'sus2' },
-    // Dyads
-    { iv: [0,7],      sfx: '5'    },  // power chord
   ];
+
+  // Render a list of pitches as space-separated note names, low to high,
+  // de-duplicated by pitch class. Used as the fallback whenever the input
+  // doesn't match a template.
+  function noteListSymbol(parsed) {
+    const sorted = [...parsed].sort((a,b) => a.midi - b.midi);
+    const seen = new Set();
+    const labels = [];
+    for (const p of sorted) {
+      if (!seen.has(p.pc)) {
+        seen.add(p.pc);
+        labels.push(PC_NAMES_SHARP[p.pc]);
+      }
+    }
+    return labels.join(' ');
+  }
 
   // Try to match a sorted-unique pitch-class set to a template under
   // any rotation (i.e. trying each note as the candidate root).
@@ -2552,86 +2564,39 @@
       return { symbol: PC_NAMES_SHARP[parsed[0].pc], bass: parsed[0].midi };
     }
 
-    // Distinct pitch classes, sorted ascending by pc
-    const pcs = Array.from(new Set(parsed.map(p => p.pc))).sort((a,b) => a - b);
-
-    // Two distinct pcs → "X+Y" notation per spec
-    if (pcs.length === 2) {
-      // Show in the order of the actual lowest sounding notes so the
-      // label reflects what the player did (not numerical pc order).
-      const sorted = [...parsed].sort((a,b) => a.midi - b.midi);
-      const seen = new Set();
-      const ordered = [];
-      for (const p of sorted) {
-        if (!seen.has(p.pc)) { seen.add(p.pc); ordered.push(p.pc); }
-      }
-      const useFlat = ordered.some(pc => [1,3,6,8,10].includes(pc) && pc !== 1 && pc !== 6);
-      const names = useFlat ? PC_NAMES_FLAT : PC_NAMES_SHARP;
-      // Special case: if interval is a perfect 5th, prefer the "5" power-
-      // chord label which is more conventional than "C+G".
-      const interval = (ordered[1] - ordered[0] + 12) % 12;
-      if (interval === 7) return { symbol: names[ordered[0]] + '5', bass: sorted[0].midi };
-      return { symbol: names[ordered[0]] + '+' + names[ordered[1]], bass: sorted[0].midi };
-    }
-
-    // 3+ distinct pcs → try templates from most specific down
-    // For each candidate root pc, compute intervals from that root.
-    // For each template, see if its iv set equals our intervals.
-    // Two-pass: first pass requires bass = root (no slash); second pass
-    // accepts any rooting (yields slash chords). This way sus2 vs sus4
-    // and other inversion-pairs prefer the spelling where the lowest
-    // sounding note is the root.
-    const bassMidiTmp = parsed.reduce((min, p) => p.midi < min ? p.midi : min, Infinity);
-    const bassPcTmp = ((bassMidiTmp % 12) + 12) % 12;
-    let bestMatch = null;
-    function tryMatch(requireBassAsRoot) {
-      for (const tpl of CHORD_TEMPLATES) {
-        if (tpl.iv.length !== pcs.length) continue;
-        for (const rootPc of pcs) {
-          if (requireBassAsRoot && rootPc !== bassPcTmp) continue;
-          const intervals = pcs.map(pc => (pc - rootPc + 12) % 12).sort((a,b) => a - b);
-          const expected = [...tpl.iv].sort((a,b) => a - b);
-          if (intervals.length === expected.length &&
-              intervals.every((v, i) => v === expected[i])) {
-            return { rootPc, tpl };
-          }
-        }
-      }
-      return null;
-    }
-    bestMatch = tryMatch(true) || tryMatch(false);
-
-    // Determine bass from actual lowest sounding pitch
     const bassMidi = parsed.reduce((min, p) => p.midi < min ? p.midi : min, Infinity);
     const bassPc = ((bassMidi % 12) + 12) % 12;
 
-    if (bestMatch) {
-      // Choose sharp/flat naming based on the root. Roots that are
-      // typically named with flats: D♭, E♭, G♭, A♭, B♭ → pcs 1,3,6,8,10
-      // Sharp-friendly minors are common too, but flats look cleaner
-      // for these enharmonic spellings on a small label.
-      const useFlat = [1,3,6,8,10].includes(bestMatch.rootPc) && bestMatch.tpl.sfx !== '' ? false : false;
-      // Simpler rule: always use sharps for the label. Keep it predictable.
-      const rootName = PC_NAMES_SHARP[bestMatch.rootPc];
-      let sym = rootName + bestMatch.tpl.sfx;
-      // Slash chord if bass differs from root
-      if (bassPc !== bestMatch.rootPc) {
-        sym += '/' + PC_NAMES_SHARP[bassPc];
-      }
-      return { symbol: sym, bass: bassMidi };
+    // Distinct pitch classes
+    const pcs = Array.from(new Set(parsed.map(p => p.pc))).sort((a,b) => a - b);
+
+    // Two distinct pcs → no triad/7th can match → fall through to notes
+    if (pcs.length < 3) {
+      return { symbol: noteListSymbol(parsed), bass: bassMidi };
     }
 
-    // Unrecognized cluster — list pitches in pitch order, low to high
-    const sortedPcs = [...parsed].sort((a,b) => a.midi - b.midi);
-    const seen = new Set();
-    const labels = [];
-    for (const p of sortedPcs) {
-      if (!seen.has(p.pc)) {
-        seen.add(p.pc);
-        labels.push(PC_NAMES_SHARP[p.pc]);
+    // 3+ distinct pcs → try templates from most specific down. Match
+    // only when bass = root (we don't render slash chords any more, so
+    // any non-root-position spelling falls through to the note list).
+    let bestMatch = null;
+    for (const tpl of CHORD_TEMPLATES) {
+      if (tpl.iv.length !== pcs.length) continue;
+      const intervals = pcs.map(pc => (pc - bassPc + 12) % 12).sort((a,b) => a - b);
+      const expected = [...tpl.iv].sort((a,b) => a - b);
+      if (intervals.length === expected.length &&
+          intervals.every((v, i) => v === expected[i])) {
+        bestMatch = { rootPc: bassPc, tpl };
+        break;
       }
     }
-    return { symbol: labels.join(' '), bass: bassMidi };
+
+    if (bestMatch) {
+      const rootName = PC_NAMES_SHARP[bestMatch.rootPc];
+      return { symbol: rootName + bestMatch.tpl.sfx, bass: bassMidi };
+    }
+
+    // Anything else — list the notes
+    return { symbol: noteListSymbol(parsed), bass: bassMidi };
   }
 
   // === Chord persistence ===
@@ -2712,6 +2677,19 @@
       setChordState(slot, chords[slot] ? 'loaded' : 'empty');
       return;
     }
+    // Reject single-note captures (one distinct pitch class, even if
+    // doubled at multiple octaves). Chord pads are for chords; a single
+    // note is almost always an accidental tap on the wrong target.
+    // Revert state and discard the buffer.
+    const distinctPcs = new Set();
+    for (const n of buf) {
+      const p = noteToPitchClass(n.note);
+      if (p) distinctPcs.add(p.pc);
+    }
+    if (distinctPcs.size < 2) {
+      setChordState(slot, chords[slot] ? 'loaded' : 'empty');
+      return;
+    }
     const recognized = recognizeChord(buf);
     chords[slot] = {
       notes: buf,
@@ -2722,10 +2700,14 @@
   }
 
   // === Playback ===
-  function playChord(slot) {
+  // Start playing the chord and keep it ringing — caller is responsible
+  // for calling stopChordHold() when the user lifts. No auto-release
+  // timer; the chord sustains as long as the press is held.
+  function startChordHold(slot) {
     const c = chords[slot];
     if (!c || !c.notes.length) return;
-    // If already playing, stop first (re-trigger)
+    // Defensive cleanup in case anything is lingering from a previous
+    // (timed) play session.
     stopChord(slot);
     setChordState(slot, 'playing');
     const tids = [];
@@ -2735,7 +2717,29 @@
       noteOn(n.manualIdx, n.note, tid, n.vel);
     });
     chordPlayTouchIds[slot] = tids;
-    // Schedule release + state reset
+  }
+
+  // Release a held chord on lift. Notes-off + state back to loaded.
+  function stopChordHold(slot) {
+    releaseChord(slot);
+    setChordState(slot, 'loaded');
+  }
+
+  // Legacy timed playback — kept for backward compatibility with code
+  // paths that might still call it (e.g. dialog cleanup), but the
+  // primary playback path is hold-driven via startChordHold.
+  function playChord(slot) {
+    const c = chords[slot];
+    if (!c || !c.notes.length) return;
+    stopChord(slot);
+    setChordState(slot, 'playing');
+    const tids = [];
+    c.notes.forEach((n, i) => {
+      const tid = 'cd-' + slot + '-' + i;
+      tids.push(tid);
+      noteOn(n.manualIdx, n.note, tid, n.vel);
+    });
+    chordPlayTouchIds[slot] = tids;
     chordPlayTimers[slot] = setTimeout(() => {
       releaseChord(slot);
       setChordState(slot, 'loaded');
@@ -2774,21 +2778,6 @@
     saveChords();
   }
 
-  function chordAction(slot) {
-    const state = chordState[slot];
-    if (state === 'empty') {
-      armChord(slot);
-    } else if (state === 'armed') {
-      // Tap while armed disarms (cancel)
-      disarmChord();
-    } else if (state === 'loaded') {
-      playChord(slot);
-    } else if (state === 'playing') {
-      stopChord(slot);
-      setChordState(slot, 'loaded');
-    }
-  }
-
   // === Chord MIDI export ===
   // Reuse the file builder from clips by faking a one-event-cluster
   // "clip" — all notes-on at t=0, all notes-off at t=CHORD_PLAY_MS.
@@ -2812,47 +2801,137 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // Tap = chordAction, long-press on loaded/playing = open dialog.
-  // Same gesture model as clip buttons.
-  function attachChordHandlers(btn, slot) {
-    let pressTimer = null;
-    let longPressed = false;
+  // Gesture model for chord pads:
+  //   empty     → tap → arm (capture mode)
+  //   armed     → tap → disarm (cancel)
+  //   loaded    → press-and-hold → play while held, release on lift
+  //   loaded    → double-tap → open export/delete dialog
+  // Single-tap on a loaded pad still plays — it's a very short hold.
+  // Long-press is no longer used (it would conflict with sustained
+  // playback). Double-tap is detected by a second press-down arriving
+  // within DOUBLE_TAP_WINDOW_MS of the previous release.
+  const CHORD_DOUBLE_TAP_MS = 350;
+  const chordLastReleaseAt = new Array(NUM_CHORDS).fill(0);
+  // Track which slot each touch identifier is currently holding, so we
+  // release the right slot on touchend/touchcancel and so the same finger
+  // can't double-trigger.
+  const chordHoldByTouch = new Map();
+  // For mouse: a single 'mouse' identifier suffices.
+  let chordHoldByMouse = -1;
 
-    function startPress() {
-      longPressed = false;
-      if (pressTimer) clearTimeout(pressTimer);
-      pressTimer = setTimeout(() => {
-        longPressed = true;
-        const state = chordState[slot];
-        if (state === 'loaded' || state === 'playing') {
-          openChordDialog(slot);
-        }
-      }, LONG_PRESS_MS);
+  function attachChordHandlers(btn, slot) {
+    // Press-down logic, shared by mouse and touch. Returns true if the
+    // press should be tracked as "holding the chord", false if it was
+    // consumed by another action (arming, double-tap, etc.).
+    function press(touchIdent) {
+      const state = chordState[slot];
+      if (state === 'empty') {
+        armChord(slot);
+        return false;
+      }
+      if (state === 'armed') {
+        disarmChord();
+        return false;
+      }
+      // loaded or playing → check for double-tap
+      const now = nowMs();
+      if (now - chordLastReleaseAt[slot] < CHORD_DOUBLE_TAP_MS) {
+        // Double-tap: stop any in-progress playback and open the dialog.
+        // Reset the timestamp so a third quick tap doesn't open it again.
+        chordLastReleaseAt[slot] = 0;
+        stopChord(slot);
+        setChordState(slot, 'loaded');
+        openChordDialog(slot);
+        return false;
+      }
+      // Single press → start playing held. If something else is already
+      // holding this slot (e.g. multitouch second finger), ignore — one
+      // hold per slot at a time.
+      if (chordHoldByMouse === slot) return false;
+      for (const v of chordHoldByTouch.values()) if (v === slot) return false;
+      startChordHold(slot);
+      return true;
     }
-    function endPress() {
-      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-      if (!longPressed) chordAction(slot);
-    }
-    function cancelPress() {
-      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+
+    function release(touchIdent) {
+      // Only release if we're actually holding this slot for this touch.
+      // The chordLastReleaseAt timestamp is set whenever a hold ends so
+      // a subsequent press can detect a double-tap.
+      if (chordState[slot] === 'playing') {
+        stopChordHold(slot);
+        chordLastReleaseAt[slot] = nowMs();
+      }
     }
 
     btn.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      startPress();
+      // Use the first changedTouch — secondary touches on the same pad
+      // are ignored (single-finger hold semantics).
+      const t = e.changedTouches[0];
+      if (!t) return;
+      // Only track this touch if it actually starts a hold; otherwise
+      // the press was consumed (arm/disarm/double-tap) and we don't
+      // need a touchend handler for it.
+      if (press(t.identifier)) {
+        chordHoldByTouch.set(t.identifier, slot);
+      }
     }, { passive: false });
+
     btn.addEventListener('touchend', (e) => {
       e.preventDefault();
-      endPress();
+      for (const t of e.changedTouches) {
+        if (chordHoldByTouch.get(t.identifier) === slot) {
+          chordHoldByTouch.delete(t.identifier);
+          release(t.identifier);
+        }
+      }
     }, { passive: false });
-    btn.addEventListener('touchcancel', cancelPress, { passive: false });
+
+    btn.addEventListener('touchcancel', (e) => {
+      for (const t of e.changedTouches) {
+        if (chordHoldByTouch.get(t.identifier) === slot) {
+          chordHoldByTouch.delete(t.identifier);
+          release(t.identifier);
+        }
+      }
+    }, { passive: false });
+
     btn.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      startPress();
+      if (press('mouse')) {
+        chordHoldByMouse = slot;
+      }
     });
-    btn.addEventListener('mouseup', endPress);
-    btn.addEventListener('mouseleave', cancelPress);
+    // mouseup/mouseleave are handled at the window level (below) so
+    // the chord releases even if the cursor leaves the button while held.
   }
+
+  // Window-level mouse release for chord pads — mirrors the keyboard's
+  // window-level mouseup handler. Without this, sliding off a pad while
+  // holding leaves the chord stuck on.
+  window.addEventListener('mouseup', () => {
+    if (chordHoldByMouse >= 0) {
+      const slot = chordHoldByMouse;
+      chordHoldByMouse = -1;
+      if (chordState[slot] === 'playing') {
+        stopChordHold(slot);
+        chordLastReleaseAt[slot] = nowMs();
+      }
+    }
+  });
+  // Releasing focus (alt-tab, etc.) while held — cleanest to release
+  // all held chords so we don't leave notes ringing.
+  window.addEventListener('blur', () => {
+    if (chordHoldByMouse >= 0) {
+      const slot = chordHoldByMouse;
+      chordHoldByMouse = -1;
+      if (chordState[slot] === 'playing') stopChordHold(slot);
+    }
+    for (const slot of chordHoldByTouch.values()) {
+      if (chordState[slot] === 'playing') stopChordHold(slot);
+    }
+    chordHoldByTouch.clear();
+  });
 
   // Reuse the clip-dialog visuals for chord export/delete by parameterizing
   // the active slot type. Simplest approach: a separate dialog instance
