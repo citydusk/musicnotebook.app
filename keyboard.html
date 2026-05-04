@@ -109,6 +109,24 @@
     display: flex;
     flex-direction: column;
     gap: var(--manual-gap);
+    position: relative;
+  }
+
+  /* Divider beneath the bottom manual. Anchored to .manuals-stack at
+     a fixed offset below the keys — NOT to .bottom-row, which floats
+     with the device's space-between flex layout (on iPad as a standalone
+     web app the viewport is taller, so the bottom row drifts further
+     from the keys; we want the divider to stay glued to the keys). */
+  .manuals-stack::after {
+    content: '';
+    position: absolute;
+    bottom: calc(-1 * var(--manual-gap) / 2);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    height: 1px;
+    background: rgba(190, 210, 255, 0.1);
+    pointer-events: none;
   }
 
   /* === MANUAL: a row containing octave controls + the keyboard === */
@@ -467,11 +485,50 @@
     gap: max(6px, calc(var(--key-w) * 0.12));
   }
 
+  /* Each button group (CLIPS, CHORDS) sits as a horizontal row with
+     its label vertically centered to the left of the buttons. Label
+     styling matches the PIANO/SYNTH/VOL phosphor labels — same font,
+     same active glow, since these group labels are always-on. */
+  .btn-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: max(6px, calc(var(--key-w) * 0.14));
+  }
+  .btn-group-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(4.5px, calc(var(--key-w) * 0.085), 7px);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    color: rgba(240, 246, 255, 0.85);
+    text-shadow:
+      0 0 4px rgba(170, 200, 255, 0.5),
+      0 0 1px rgba(220, 232, 255, 0.6);
+    user-select: none;
+    pointer-events: none;
+  }
+  .btn-group-buttons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: max(6px, calc(var(--key-w) * 0.12));
+  }
+
+  /* Boost the inter-group spacing in the top row so CLIPS and CHORDS
+     read as two distinct banks. The base .top-row gap handles the
+     basic rhythm; this widens it at the group boundary. */
+  .top-row {
+    gap: max(24px, calc(var(--key-w) * 0.7));
+  }
+
   /* === BOTTOM ROW: sustain bar === */
   /* Just the sustain bar, anchored to the bottom of the device via
      .device's space-between layout. Wrapped in a row container for
-     consistent centering and so the divider line above can be a
-     pseudo-element on the wrapper. */
+     consistent centering. The divider above it lives on .manuals-stack,
+     not here — that way it stays glued to the keys at a fixed offset
+     even when the device's flex spacing distributes extra height into
+     this gap (e.g. iPad standalone web app, taller viewports). */
   .bottom-row {
     align-self: center;
     display: flex;
@@ -479,21 +536,6 @@
     align-items: center;
     justify-content: center;
     position: relative;
-  }
-
-  /* Divider above the bottom row, sitting in the middle of the gap
-     between the bottom manual and the row — mirrors the inter-manual
-     dividers. Spans the full device width, not just the row. */
-  .bottom-row::before {
-    content: '';
-    position: absolute;
-    top: calc(-1 * var(--manual-gap) / 2);
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100vw;
-    height: 1px;
-    background: rgba(190, 210, 255, 0.1);
-    pointer-events: none;
   }
 
   /* === CLIP BUTTONS === */
@@ -562,6 +604,89 @@
 
   /* Playing: bright green. Number and edge glow both green. */
   .clip-btn.playing {
+    color: rgba(140, 250, 175, 0.95);
+    text-shadow:
+      0 0 5px rgba(60, 230, 110, 0.85),
+      0 0 1px rgba(170, 255, 195, 0.7);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.5),
+      0 0 6px rgba(60, 230, 110, 0.85),
+      0 0 14px rgba(60, 230, 110, 0.4);
+  }
+
+  /* === CHORD BUTTONS === */
+  /* Circular pads — different shape from the square clip buttons signals
+     the different function (chord-as-snapshot vs sequence-as-clip). Same
+     size envelope so the row reads as one cohesive control bank. State
+     palette mirrors clip buttons: empty (dim), armed (red, mirrors
+     'recording'), loaded (white), playing (green). The label is the
+     chord symbol itself, so font-size must scale down a touch from the
+     clip buttons' single-digit numbers to fit symbols like "Cmaj7". */
+  .chord-btn {
+    width: calc(var(--ctrl-w) * 1.5);
+    height: calc(var(--ctrl-w) * 1.5);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4%;
+    background-color: #0a0707;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    font-family: 'Inter', sans-serif;
+    /* Smaller than clip buttons so multi-character chord symbols
+       ("Cmaj7", "F♯m") fit without clipping. Single-letter labels still
+       read fine at this size. */
+    font-size: clamp(8px, calc(var(--key-w) * 0.16), 13px);
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1;
+    text-align: center;
+    transition: color 0.06s, text-shadow 0.06s, box-shadow 0.06s;
+    /* Default = empty */
+    color: rgba(225, 235, 255, 0.35);
+    text-shadow: 0 0 3px rgba(225, 235, 255, 0.2);
+    box-shadow:
+      0 1px 0 rgba(180, 200, 240, 0.06) inset,
+      0 0 0 0.5px rgba(0,0,0,0.6),
+      0 0 0 1px rgba(225, 235, 255, 0.18),
+      0 0 4px rgba(225, 235, 255, 0.18),
+      0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  .chord-btn:active {
+    filter: brightness(0.7);
+  }
+
+  /* Armed: waiting for the user to play a chord. Same red as recording. */
+  .chord-btn.armed {
+    color: rgba(255, 130, 110, 0.95);
+    text-shadow:
+      0 0 5px rgba(245, 60, 60, 0.85),
+      0 0 1px rgba(255, 150, 130, 0.7);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.5),
+      0 0 6px rgba(245, 60, 60, 0.85),
+      0 0 14px rgba(245, 60, 60, 0.4);
+  }
+
+  /* Loaded: chord captured, ready to play */
+  .chord-btn.loaded {
+    color: rgba(245, 250, 255, 0.95);
+    text-shadow:
+      0 0 5px rgba(225, 235, 255, 0.7),
+      0 0 1px rgba(245, 250, 255, 0.85);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.5),
+      0 0 6px rgba(225, 235, 255, 0.7),
+      0 0 14px rgba(225, 235, 255, 0.3);
+  }
+
+  /* Playing: brief flash while the chord rings */
+  .chord-btn.playing {
     color: rgba(140, 250, 175, 0.95);
     text-shadow:
       0 0 5px rgba(60, 230, 110, 0.85),
@@ -1037,12 +1162,27 @@
     device.innerHTML = '';
     document.documentElement.style.setProperty('--n', MANUALS.length);
 
-    // Top row: four MIDI clip memory buttons, centered. Mirrors the
-    // bottom sustain bar's centered placement for visual symmetry.
-    // Tap once to start recording, again to stop, again to play; long-
-    // press to erase.
+    // Top row: four MIDI clip memory buttons + four chord pads, each
+    // group wrapped in a labeled column. Mirrors the bottom sustain
+    // bar's centered placement for visual symmetry. Clip behaviour:
+    // tap once to start recording, again to stop, again to play;
+    // long-press to erase.
     const topRow = document.createElement('div');
     topRow.className = 'top-row';
+
+    function makeGroup(labelText, className) {
+      const group = document.createElement('div');
+      group.className = 'btn-group ' + className;
+      const label = document.createElement('span');
+      label.className = 'btn-group-lbl';
+      label.textContent = labelText;
+      const buttons = document.createElement('div');
+      buttons.className = 'btn-group-buttons';
+      group.appendChild(label);
+      group.appendChild(buttons);
+      return { group, buttons };
+    }
+
     function makeClipButton(slot) {
       const btn = document.createElement('button');
       btn.className = 'clip-btn';
@@ -1052,9 +1192,30 @@
       attachClipHandlers(btn, slot);
       return btn;
     }
+    const clipGroup = makeGroup('CLIPS', 'clip-group');
     for (let i = 0; i < NUM_CLIPS; i++) {
-      topRow.appendChild(makeClipButton(i));
+      clipGroup.buttons.appendChild(makeClipButton(i));
     }
+    topRow.appendChild(clipGroup.group);
+
+    // Chord pads — circular, capture a single chord on arm-then-play.
+    // Sit beside the clip buttons; different shape signals different
+    // function. The label updates to the chord symbol once captured.
+    function makeChordButton(slot) {
+      const btn = document.createElement('button');
+      btn.className = 'chord-btn';
+      btn.dataset.chordSlot = slot;
+      btn.textContent = String(slot + 1);
+      btn.setAttribute('aria-label', `Chord pad ${slot + 1}`);
+      attachChordHandlers(btn, slot);
+      return btn;
+    }
+    const chordGroup = makeGroup('CHORDS', 'chord-group');
+    for (let i = 0; i < NUM_CHORDS; i++) {
+      chordGroup.buttons.appendChild(makeChordButton(i));
+    }
+    topRow.appendChild(chordGroup.group);
+
     device.appendChild(topRow);
 
     // Wrap the manuals in their own container so they stay packed
@@ -1744,8 +1905,11 @@
 
     // MIDI clip recording. Only capture live input (not events fired by
     // clip playback itself, which use 'pb-...' touch ids).
-    if (typeof touchId !== 'string' || !touchId.startsWith('pb-')) {
+    if (typeof touchId !== 'string' || (!touchId.startsWith('pb-') && !touchId.startsWith('cd-'))) {
       captureEvent('on', manualIdx, note, v);
+      // Also feed chord pads if one is armed. Chord-playback touchIds
+      // start with 'cd-' so we filter them out alongside clip playback.
+      chordCaptureNote(manualIdx, note, v);
     }
 
     // Visual feedback: highlight only the matching key on this manual,
@@ -1783,8 +1947,9 @@
       }
     }
     // MIDI clip recording. Only capture live input (not events fired by
-    // clip playback itself, which use 'pb-...' touch ids).
-    if (typeof touchId !== 'string' || !touchId.startsWith('pb-')) {
+    // clip playback itself, which use 'pb-...' touch ids; or chord
+    // pad playback, which uses 'cd-...').
+    if (typeof touchId !== 'string' || (!touchId.startsWith('pb-') && !touchId.startsWith('cd-'))) {
       captureEvent('off', manualIdx, note, 0);
     }
   }
@@ -1979,6 +2144,45 @@
   let recordingStartTime = 0;
   const LONG_PRESS_MS = 600;
 
+  // === Clip persistence ===
+  // Clips survive page refresh by storing the array in localStorage.
+  // Schema-versioned key so the event shape can evolve later without
+  // crashing on stale data. We only persist finalized clips (loaded
+  // state) — in-progress recordings and playback timers are runtime-
+  // only state. saveClips() is called after every mutation that changes
+  // what's stored: finalize-recording, erase, and hydrate-on-load (the
+  // last in case we're trimming dropped legacy data).
+  const CLIP_STORAGE_KEY = 'keyboard.clips.v1';
+  function saveClips() {
+    try {
+      // Only the {events, duration} objects need persisting. Nulls stay
+      // as nulls so slot indexes are preserved.
+      localStorage.setItem(CLIP_STORAGE_KEY, JSON.stringify(clips));
+    } catch (e) {
+      // Quota exceeded, private mode, or storage disabled — fail silent.
+      // Recording still works in-memory; we just can't survive refresh.
+    }
+  }
+  function loadClips() {
+    try {
+      const raw = localStorage.getItem(CLIP_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      // Only accept entries that look like clip objects. Anything else
+      // (truncated data, future schema, etc.) becomes null.
+      for (let i = 0; i < NUM_CLIPS; i++) {
+        const c = parsed[i];
+        if (c && Array.isArray(c.events) && typeof c.duration === 'number') {
+          clips[i] = c;
+          setClipState(i, 'loaded');
+        }
+      }
+    } catch (e) {
+      // Corrupt JSON or storage error — start fresh, don't crash.
+    }
+  }
+
   function nowMs() {
     return performance.now();
   }
@@ -2035,6 +2239,7 @@
       // Empty recording — go back to empty state, don't store nothing
       clips[slot] = null;
       setClipState(slot, 'empty');
+      saveClips();
       return;
     }
     // Trim silence at both ends:
@@ -2050,6 +2255,7 @@
     const lastT = clip.events[clip.events.length - 1].t;
     clip.duration = lastT;
     setClipState(slot, 'loaded');
+    saveClips();
   }
 
   function playClip(slot) {
@@ -2176,6 +2382,7 @@
     clips[slot] = null;
     clipTimers[slot] = [];
     setClipState(slot, 'empty');
+    saveClips();
   }
 
   function clipAction(slot) {
@@ -2230,6 +2437,481 @@
     });
     btn.addEventListener('mouseup', endPress);
     btn.addEventListener('mouseleave', cancelPress);
+  }
+
+  // === Chord pads ===
+  // Four circular buttons that each remember a single chord. Workflow:
+  //   empty  -> tap -> armed (red, waiting)
+  //   armed  -> play any chord on the keys -> first cluster of notes
+  //             within CHORD_CAPTURE_MS gets snapshot'd -> loaded
+  //   loaded -> tap -> playing (notes sound, then return to loaded)
+  //   loaded -> long-press -> dialog (export/delete)
+  //
+  // A "chord" here = the set of distinct (manualIdx, note, vel) triples
+  // played within CHORD_CAPTURE_MS of the first key-down after arming.
+  // We capture velocities so playback feels like the original strike.
+  // Octave-aware analysis turns the pitches into a chord symbol for
+  // the label; raw pitches are what we replay, so weird voicings still
+  // sound exactly as input.
+  const NUM_CHORDS = 4;
+  const CHORD_CAPTURE_MS = 150;     // window after first note-on
+  const CHORD_PLAY_MS = 900;        // how long a triggered chord rings
+  const chords = new Array(NUM_CHORDS).fill(null);  // {notes:[{manualIdx,note,vel}], symbol} or null
+  const chordState = new Array(NUM_CHORDS).fill('empty');
+  let armedChordSlot = -1;
+  let chordCaptureStart = 0;
+  let chordCaptureBuffer = [];      // notes seen so far in the window
+  let chordCaptureTimer = null;
+  // Active playback bookkeeping per slot — the touchIds we used so we
+  // can release if the user taps again or stops.
+  const chordPlayTimers = new Array(NUM_CHORDS).fill(null);
+  const chordPlayTouchIds = new Array(NUM_CHORDS).fill(null).map(() => []);
+
+  function setChordState(slot, state) {
+    chordState[slot] = state;
+    const btn = document.querySelector(`.chord-btn[data-chord-slot="${slot}"]`);
+    if (!btn) return;
+    btn.classList.remove('armed', 'loaded', 'playing');
+    if (state !== 'empty') btn.classList.add(state);
+    // Label: empty shows the slot number; otherwise the chord symbol.
+    if (state === 'empty') {
+      btn.textContent = String(slot + 1);
+    } else if (state === 'armed') {
+      btn.textContent = '●';  // simple armed glyph
+    } else {
+      const c = chords[slot];
+      btn.textContent = c ? c.symbol : String(slot + 1);
+    }
+  }
+
+  // === Chord recognizer ===
+  // Convert a list of pitch names (with octaves) to a chord symbol.
+  // Strategy: extract pitch classes (0-11), look at intervals from
+  // each candidate root, match against templates for common qualities.
+  // Octave info is preserved separately so we can detect inversions
+  // (slash chords) — the lowest sounding note is the bass.
+  const PITCH_CLASS = { C:0, 'C#':1, Db:1, D:2, 'D#':3, Eb:3, E:4, F:5,
+    'F#':6, Gb:6, G:7, 'G#':8, Ab:8, A:9, 'A#':10, Bb:10, B:11 };
+  const PC_NAMES_SHARP = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+  // Use flats when the natural reading is flatter (e.g. Eb minor reads
+  // better than D♯ minor for most chords). Simple heuristic: prefer
+  // sharps for sharp keys, flats for flat keys. Good enough.
+  const PC_NAMES_FLAT = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+
+  function noteToPitchClass(noteName) {
+    // noteName like "C#4" or "Bb3" — strip octave digits (and minus sign)
+    const m = noteName.match(/^([A-G])(#|b)?(-?\d+)$/);
+    if (!m) return null;
+    const key = m[1] + (m[2] || '');
+    return { pc: PITCH_CLASS[key], oct: parseInt(m[3], 10) };
+  }
+
+  function midiNumber(noteName) {
+    const p = noteToPitchClass(noteName);
+    if (!p) return 0;
+    return (p.oct + 1) * 12 + p.pc;
+  }
+
+  // Each template is a sorted list of intervals from the root, plus the
+  // suffix to append after the root. Order matters: more specific (more
+  // notes) before less specific so we match maj7 before maj.
+  const CHORD_TEMPLATES = [
+    // Tetrads
+    { iv: [0,4,7,11], sfx: 'maj7' },
+    { iv: [0,4,7,10], sfx: '7'    },
+    { iv: [0,3,7,10], sfx: 'm7'   },
+    { iv: [0,3,7,11], sfx: 'mMaj7'},
+    { iv: [0,3,6,10], sfx: 'm7♭5' },  // half-diminished
+    { iv: [0,3,6,9],  sfx: 'dim7' },
+    { iv: [0,4,8,10], sfx: '7♯5'  },
+    { iv: [0,4,7,9],  sfx: '6'    },
+    { iv: [0,3,7,9],  sfx: 'm6'   },
+    { iv: [0,2,7,10], sfx: '9sus' },  // simple 9sus
+    { iv: [0,5,7,10], sfx: '7sus' },
+    // Triads
+    { iv: [0,4,7],    sfx: ''     },  // major
+    { iv: [0,3,7],    sfx: 'm'    },
+    { iv: [0,3,6],    sfx: 'dim'  },
+    { iv: [0,4,8],    sfx: 'aug'  },
+    { iv: [0,5,7],    sfx: 'sus4' },
+    { iv: [0,2,7],    sfx: 'sus2' },
+    // Dyads
+    { iv: [0,7],      sfx: '5'    },  // power chord
+  ];
+
+  // Try to match a sorted-unique pitch-class set to a template under
+  // any rotation (i.e. trying each note as the candidate root).
+  function recognizeChord(notes) {
+    if (!notes || notes.length === 0) return null;
+    const parsed = notes.map(n => ({ ...noteToPitchClass(n.note), midi: midiNumber(n.note) }))
+                        .filter(p => p.pc !== undefined && p.pc !== null);
+    if (parsed.length === 0) return null;
+
+    // Single note — just the note name
+    if (parsed.length === 1) {
+      return { symbol: PC_NAMES_SHARP[parsed[0].pc], bass: parsed[0].midi };
+    }
+
+    // Distinct pitch classes, sorted ascending by pc
+    const pcs = Array.from(new Set(parsed.map(p => p.pc))).sort((a,b) => a - b);
+
+    // Two distinct pcs → "X+Y" notation per spec
+    if (pcs.length === 2) {
+      // Show in the order of the actual lowest sounding notes so the
+      // label reflects what the player did (not numerical pc order).
+      const sorted = [...parsed].sort((a,b) => a.midi - b.midi);
+      const seen = new Set();
+      const ordered = [];
+      for (const p of sorted) {
+        if (!seen.has(p.pc)) { seen.add(p.pc); ordered.push(p.pc); }
+      }
+      const useFlat = ordered.some(pc => [1,3,6,8,10].includes(pc) && pc !== 1 && pc !== 6);
+      const names = useFlat ? PC_NAMES_FLAT : PC_NAMES_SHARP;
+      // Special case: if interval is a perfect 5th, prefer the "5" power-
+      // chord label which is more conventional than "C+G".
+      const interval = (ordered[1] - ordered[0] + 12) % 12;
+      if (interval === 7) return { symbol: names[ordered[0]] + '5', bass: sorted[0].midi };
+      return { symbol: names[ordered[0]] + '+' + names[ordered[1]], bass: sorted[0].midi };
+    }
+
+    // 3+ distinct pcs → try templates from most specific down
+    // For each candidate root pc, compute intervals from that root.
+    // For each template, see if its iv set equals our intervals.
+    // Two-pass: first pass requires bass = root (no slash); second pass
+    // accepts any rooting (yields slash chords). This way sus2 vs sus4
+    // and other inversion-pairs prefer the spelling where the lowest
+    // sounding note is the root.
+    const bassMidiTmp = parsed.reduce((min, p) => p.midi < min ? p.midi : min, Infinity);
+    const bassPcTmp = ((bassMidiTmp % 12) + 12) % 12;
+    let bestMatch = null;
+    function tryMatch(requireBassAsRoot) {
+      for (const tpl of CHORD_TEMPLATES) {
+        if (tpl.iv.length !== pcs.length) continue;
+        for (const rootPc of pcs) {
+          if (requireBassAsRoot && rootPc !== bassPcTmp) continue;
+          const intervals = pcs.map(pc => (pc - rootPc + 12) % 12).sort((a,b) => a - b);
+          const expected = [...tpl.iv].sort((a,b) => a - b);
+          if (intervals.length === expected.length &&
+              intervals.every((v, i) => v === expected[i])) {
+            return { rootPc, tpl };
+          }
+        }
+      }
+      return null;
+    }
+    bestMatch = tryMatch(true) || tryMatch(false);
+
+    // Determine bass from actual lowest sounding pitch
+    const bassMidi = parsed.reduce((min, p) => p.midi < min ? p.midi : min, Infinity);
+    const bassPc = ((bassMidi % 12) + 12) % 12;
+
+    if (bestMatch) {
+      // Choose sharp/flat naming based on the root. Roots that are
+      // typically named with flats: D♭, E♭, G♭, A♭, B♭ → pcs 1,3,6,8,10
+      // Sharp-friendly minors are common too, but flats look cleaner
+      // for these enharmonic spellings on a small label.
+      const useFlat = [1,3,6,8,10].includes(bestMatch.rootPc) && bestMatch.tpl.sfx !== '' ? false : false;
+      // Simpler rule: always use sharps for the label. Keep it predictable.
+      const rootName = PC_NAMES_SHARP[bestMatch.rootPc];
+      let sym = rootName + bestMatch.tpl.sfx;
+      // Slash chord if bass differs from root
+      if (bassPc !== bestMatch.rootPc) {
+        sym += '/' + PC_NAMES_SHARP[bassPc];
+      }
+      return { symbol: sym, bass: bassMidi };
+    }
+
+    // Unrecognized cluster — list pitches in pitch order, low to high
+    const sortedPcs = [...parsed].sort((a,b) => a.midi - b.midi);
+    const seen = new Set();
+    const labels = [];
+    for (const p of sortedPcs) {
+      if (!seen.has(p.pc)) {
+        seen.add(p.pc);
+        labels.push(PC_NAMES_SHARP[p.pc]);
+      }
+    }
+    return { symbol: labels.join(' '), bass: bassMidi };
+  }
+
+  // === Chord persistence ===
+  const CHORD_STORAGE_KEY = 'keyboard.chords.v1';
+  function saveChords() {
+    try {
+      localStorage.setItem(CHORD_STORAGE_KEY, JSON.stringify(chords));
+    } catch (e) { /* same as clips: best-effort */ }
+  }
+  function loadChords() {
+    try {
+      const raw = localStorage.getItem(CHORD_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      for (let i = 0; i < NUM_CHORDS; i++) {
+        const c = parsed[i];
+        if (c && Array.isArray(c.notes) && typeof c.symbol === 'string') {
+          chords[i] = c;
+          setChordState(i, 'loaded');
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // === Capture flow ===
+  function armChord(slot) {
+    // Disarm any other slot first
+    if (armedChordSlot >= 0 && armedChordSlot !== slot) {
+      setChordState(armedChordSlot, chords[armedChordSlot] ? 'loaded' : 'empty');
+    }
+    armedChordSlot = slot;
+    chordCaptureBuffer = [];
+    chordCaptureStart = 0;
+    if (chordCaptureTimer) { clearTimeout(chordCaptureTimer); chordCaptureTimer = null; }
+    setChordState(slot, 'armed');
+  }
+
+  function disarmChord() {
+    if (armedChordSlot < 0) return;
+    const slot = armedChordSlot;
+    armedChordSlot = -1;
+    chordCaptureBuffer = [];
+    if (chordCaptureTimer) { clearTimeout(chordCaptureTimer); chordCaptureTimer = null; }
+    // Restore label/state based on whether anything is stored
+    setChordState(slot, chords[slot] ? 'loaded' : 'empty');
+  }
+
+  // Called from noteOn while a slot is armed. Buffers notes within
+  // CHORD_CAPTURE_MS of the first one, then finalizes.
+  function chordCaptureNote(manualIdx, note, vel) {
+    if (armedChordSlot < 0) return;
+    const now = nowMs();
+    if (chordCaptureBuffer.length === 0) {
+      chordCaptureStart = now;
+      // Finalize after the window expires
+      chordCaptureTimer = setTimeout(finalizeCapturedChord, CHORD_CAPTURE_MS);
+    } else if (now - chordCaptureStart > CHORD_CAPTURE_MS) {
+      // Late note — ignore, the timer will close out the buffer
+      return;
+    }
+    // Avoid duplicate (manualIdx, note) pairs in case of fast retriggers
+    const dupe = chordCaptureBuffer.some(n => n.manualIdx === manualIdx && n.note === note);
+    if (!dupe) {
+      chordCaptureBuffer.push({ manualIdx, note, vel });
+    }
+  }
+
+  function finalizeCapturedChord() {
+    if (armedChordSlot < 0) return;
+    const slot = armedChordSlot;
+    const buf = chordCaptureBuffer;
+    armedChordSlot = -1;
+    chordCaptureBuffer = [];
+    chordCaptureTimer = null;
+    if (buf.length === 0) {
+      // Nothing played — revert to whatever state the slot had before
+      setChordState(slot, chords[slot] ? 'loaded' : 'empty');
+      return;
+    }
+    const recognized = recognizeChord(buf);
+    chords[slot] = {
+      notes: buf,
+      symbol: recognized ? recognized.symbol : '?',
+    };
+    setChordState(slot, 'loaded');
+    saveChords();
+  }
+
+  // === Playback ===
+  function playChord(slot) {
+    const c = chords[slot];
+    if (!c || !c.notes.length) return;
+    // If already playing, stop first (re-trigger)
+    stopChord(slot);
+    setChordState(slot, 'playing');
+    const tids = [];
+    c.notes.forEach((n, i) => {
+      const tid = 'cd-' + slot + '-' + i;
+      tids.push(tid);
+      noteOn(n.manualIdx, n.note, tid, n.vel);
+    });
+    chordPlayTouchIds[slot] = tids;
+    // Schedule release + state reset
+    chordPlayTimers[slot] = setTimeout(() => {
+      releaseChord(slot);
+      setChordState(slot, 'loaded');
+      chordPlayTimers[slot] = null;
+    }, CHORD_PLAY_MS);
+  }
+
+  function releaseChord(slot) {
+    const tids = chordPlayTouchIds[slot];
+    const c = chords[slot];
+    if (!tids || !c) return;
+    c.notes.forEach((n, i) => {
+      const tid = 'cd-' + slot + '-' + i;
+      noteOff(n.manualIdx, n.note, tid);
+    });
+    chordPlayTouchIds[slot] = [];
+  }
+
+  function stopChord(slot) {
+    if (chordPlayTimers[slot]) {
+      clearTimeout(chordPlayTimers[slot]);
+      chordPlayTimers[slot] = null;
+    }
+    releaseChord(slot);
+  }
+
+  function eraseChord(slot) {
+    if (armedChordSlot === slot) {
+      armedChordSlot = -1;
+      chordCaptureBuffer = [];
+      if (chordCaptureTimer) { clearTimeout(chordCaptureTimer); chordCaptureTimer = null; }
+    }
+    stopChord(slot);
+    chords[slot] = null;
+    setChordState(slot, 'empty');
+    saveChords();
+  }
+
+  function chordAction(slot) {
+    const state = chordState[slot];
+    if (state === 'empty') {
+      armChord(slot);
+    } else if (state === 'armed') {
+      // Tap while armed disarms (cancel)
+      disarmChord();
+    } else if (state === 'loaded') {
+      playChord(slot);
+    } else if (state === 'playing') {
+      stopChord(slot);
+      setChordState(slot, 'loaded');
+    }
+  }
+
+  // === Chord MIDI export ===
+  // Reuse the file builder from clips by faking a one-event-cluster
+  // "clip" — all notes-on at t=0, all notes-off at t=CHORD_PLAY_MS.
+  // Sustain events skipped (chords don't capture pedal state).
+  function exportChordAsMidi(slot) {
+    const c = chords[slot];
+    if (!c || !c.notes.length) return;
+    const events = [];
+    c.notes.forEach(n => events.push({ t: 0, type: 'on', manualIdx: n.manualIdx, note: n.note, vel: n.vel }));
+    c.notes.forEach(n => events.push({ t: CHORD_PLAY_MS, type: 'off', manualIdx: n.manualIdx, note: n.note, vel: 0 }));
+    const fakeClip = { events, duration: CHORD_PLAY_MS };
+    const bytes = buildMidiFile(fakeClip);
+    const blob = new Blob([bytes], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chord-${slot + 1}-${c.symbol.replace(/[^A-Za-z0-9]/g, '_')}.mid`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Tap = chordAction, long-press on loaded/playing = open dialog.
+  // Same gesture model as clip buttons.
+  function attachChordHandlers(btn, slot) {
+    let pressTimer = null;
+    let longPressed = false;
+
+    function startPress() {
+      longPressed = false;
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        longPressed = true;
+        const state = chordState[slot];
+        if (state === 'loaded' || state === 'playing') {
+          openChordDialog(slot);
+        }
+      }, LONG_PRESS_MS);
+    }
+    function endPress() {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      if (!longPressed) chordAction(slot);
+    }
+    function cancelPress() {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    }
+
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startPress();
+    }, { passive: false });
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      endPress();
+    }, { passive: false });
+    btn.addEventListener('touchcancel', cancelPress, { passive: false });
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startPress();
+    });
+    btn.addEventListener('mouseup', endPress);
+    btn.addEventListener('mouseleave', cancelPress);
+  }
+
+  // Reuse the clip-dialog visuals for chord export/delete by parameterizing
+  // the active slot type. Simplest approach: a separate dialog instance
+  // pointed at chord actions. (Extending the clip dialog would tangle
+  // its slot semantics; cleaner to mirror it.)
+  let chordDialogEl = null;
+  let chordDialogActiveSlot = -1;
+
+  function buildChordDialog() {
+    const overlay = document.createElement('div');
+    overlay.className = 'clip-dialog-overlay';
+    const dialog = document.createElement('div');
+    dialog.className = 'clip-dialog';
+    const title = document.createElement('div');
+    title.className = 'clip-dialog-title';
+    const actions = document.createElement('div');
+    actions.className = 'clip-dialog-actions';
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'clip-dialog-btn';
+    exportBtn.textContent = 'EXPORT MIDI';
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'clip-dialog-btn danger';
+    deleteBtn.textContent = 'DELETE';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'clip-dialog-cancel';
+    cancelBtn.textContent = 'CANCEL';
+    actions.appendChild(exportBtn);
+    actions.appendChild(deleteBtn);
+    dialog.appendChild(title);
+    dialog.appendChild(actions);
+    dialog.appendChild(cancelBtn);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeChordDialog();
+    });
+    dialog.addEventListener('click', (e) => e.stopPropagation());
+    exportBtn.addEventListener('click', () => {
+      if (chordDialogActiveSlot >= 0) exportChordAsMidi(chordDialogActiveSlot);
+      closeChordDialog();
+    });
+    deleteBtn.addEventListener('click', () => {
+      if (chordDialogActiveSlot >= 0) eraseChord(chordDialogActiveSlot);
+      closeChordDialog();
+    });
+    cancelBtn.addEventListener('click', closeChordDialog);
+    return { overlay, title };
+  }
+  function openChordDialog(slot) {
+    if (!chordDialogEl) chordDialogEl = buildChordDialog();
+    chordDialogActiveSlot = slot;
+    const c = chords[slot];
+    chordDialogEl.title.textContent = c ? `CHORD ${slot + 1}  ${c.symbol}` : `CHORD ${slot + 1}`;
+    chordDialogEl.overlay.classList.add('open');
+  }
+  function closeChordDialog() {
+    if (!chordDialogEl) return;
+    chordDialogEl.overlay.classList.remove('open');
+    chordDialogActiveSlot = -1;
   }
 
   // === Clip dialog ===
@@ -2519,6 +3201,10 @@
   // Init
   buildAllManuals();
   initInstruments();
+  // Hydrate clips after the buttons exist so setClipState can light
+  // up the loaded slots.
+  loadClips();
+  loadChords();
 </script>
 
 </body>
