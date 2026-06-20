@@ -351,6 +351,7 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
   #copyBtn{display:none !important;}
   #pasteBtn{display:none !important;}
   #utilBtn{display:none !important;}
+  #fullscreenGrp{display:none !important;}
   #exportBtn{display:none !important;}
   #undoBtn{display:none !important;}
   #redoBtn{display:none !important;}
@@ -602,9 +603,9 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
       <span class="pen-opt" data-val="draw-fine" style="padding:2px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;">0.5</span>
       <span class="pen-opt" data-val="draw-medium" style="padding:2px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;">0.7</span>
       <span class="pen-opt" data-val="draw-bold" style="padding:2px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;">0.9</span>
-      <span class="pen-opt" data-val="slur" style="padding:2px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;font-weight:bold;"><span style="position:relative;top:5px;">͡</span></span>
-      <span class="pen-opt" data-val="hairpin" style="padding:2px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;font-weight:bold;">&lt;</span>
-      <span class="pen-opt" data-val="dashed" style="padding:2px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;font-weight:bold;">---</span>
+      <span class="pen-opt" data-val="slur" title="Slur" style="padding:5px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;"><svg viewBox="0 0 26 11" width="26" height="11" style="display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg"><path d="M3,9 C7,2.5 19,2.5 23,9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="pen-opt" data-val="hairpin" title="Hairpin (crescendo)" style="padding:5px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;"><svg viewBox="0 0 26 11" width="26" height="11" style="display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg"><path d="M3,5.5 L23,1.5 M3,5.5 L23,9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="pen-opt" data-val="dashed" title="Dashed line" style="padding:5px 8px;cursor:pointer;text-align:center;display:block;white-space:nowrap;"><svg viewBox="0 0 26 11" width="26" height="11" style="display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg"><path d="M3,5.5 L23,5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3.2 3.2"/></svg></span>
     </div>
     <div id="penColors" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 3px;height:36px;">
       <div style="display:flex;gap:3px;">
@@ -656,6 +657,10 @@ body:not(.light) [data-textcolor="#1C1508"].text-color:not(.on){border-color:rgb
         <span class="thumb"></span>
       </span>
     </label>
+  </div>
+  <div class="sep"></div>
+  <div class="grp" id="fullscreenGrp">
+    <button class="btn" id="fullscreenBtn" style="padding:2px 4px;" title="Full Screen"><svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1508" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
   </div>
   <div class="sep"></div>
   <div class="grp">
@@ -4135,8 +4140,8 @@ function notationDown(x,y){
         if(type==='clef'){const c=clefs.find(c=>c.id===id);return c&&(x>=c.x-LS*0.5&&x<=c.x+LS*2.5)&&Math.abs(y-(stTop(c.si)+SH/2))<SH;}
         if(type==='hairpin'){const h=hairpins.find(h=>h.id===id);return h&&x>=Math.min(h.x1,h.x2)-LS&&x<=Math.max(h.x1,h.x2)+LS&&Math.abs(y-h.y)<LS*2;}
         if(type==='rest'){const r=rests.find(r=>r.id===id);return r&&Math.abs(x-r.x)<LS*1.5&&Math.abs(y-slotY(r.slot,r.si))<LS*2;}
-        if(type==='stroke'){
         if(type==='keysig'){const k=keySigs.find(k=>k.id===id);if(!k)return false;const w=keySigWidth(k.sharps);return x>=k.x-LS&&x<=k.x+w+LS&&Math.abs(y-(stTop(k.si)+SH/2))<SH/2+LS;}
+        if(type==='stroke'){
           const st=fd.getStrokes()[id];if(!st)return false;
           const scale=fd.cssW/LW;
           const zs=st.refW?fd.cssW/st.refW:1;
@@ -7038,6 +7043,41 @@ document.getElementById('gridBtn').addEventListener('change',()=>{
   render();
 });
 
+// Full screen toggle. Uses the Fullscreen API on the document element so the
+// whole page (toolbar + page) goes edge-to-edge. Hidden on iPhone via CSS.
+const _fsExpandIcon = '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>';
+const _fsContractIcon = '<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>';
+function _isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function _enterFullscreen(){
+  const el = document.documentElement;
+  if(el.requestFullscreen) el.requestFullscreen();
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+function _exitFullscreen(){
+  if(document.exitFullscreen) document.exitFullscreen();
+  else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+}
+function _syncFullscreenBtn(){
+  const btn = document.getElementById('fullscreenBtn');
+  const icon = document.getElementById('fullscreenIcon');
+  const on = _isFullscreen();
+  btn.classList.toggle('on', on);
+  btn.title = on ? 'Exit Full Screen' : 'Full Screen';
+  icon.innerHTML = on ? _fsContractIcon : _fsExpandIcon;
+  // Re-fit the page to the new viewport. The desktop branch of resize()
+  // already fits the canvas to scroll-area height/width, so entering or
+  // leaving fullscreen just needs a re-run. The viewport isn't reliable on
+  // the first frame after the fullscreen transition, so re-fit twice.
+  const refit = ()=>{ resize(); render(); fd.redrawAll(); };
+  requestAnimationFrame(refit);
+  setTimeout(refit, 120);
+}
+document.getElementById('fullscreenBtn').addEventListener('click',()=>{
+  if(_isFullscreen()) _exitFullscreen(); else _enterFullscreen();
+});
+document.addEventListener('fullscreenchange', _syncFullscreenBtn);
+document.addEventListener('webkitfullscreenchange', _syncFullscreenBtn);
+
 document.getElementById('muteBtn').addEventListener('click',()=>{
   muted=!muted;
   const btn=document.getElementById('muteBtn');
@@ -7885,7 +7925,13 @@ document.addEventListener('selectstart', e => {
   const penSel = document.getElementById('penSelect');
   const penMenu = document.getElementById('penSelectMenu');
   const penLabel = document.getElementById('penSelectLabel');
-  const labelMap = {'draw-fine':'0.5','draw-medium':'0.7','draw-bold':'0.9','slur':'͡','hairpin':'<','dashed':'---'};
+  const _lineIcon = (inner) => '<svg viewBox="0 0 22 9" width="20" height="9" style="display:block;" xmlns="http://www.w3.org/2000/svg">'+inner+'</svg>';
+  const labelMap = {
+    'draw-fine':'0.5','draw-medium':'0.7','draw-bold':'0.9',
+    'slur':    _lineIcon('<path d="M2,7.5 C5.5,2 16.5,2 20,7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'),
+    'hairpin': _lineIcon('<path d="M2,4.5 L20,1.2 M2,4.5 L20,7.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'),
+    'dashed':  _lineIcon('<path d="M2,4.5 L20,4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2.8 2.8"/>'),
+  };
 
   function openMenu() {
     const r = penSel.getBoundingClientRect();
@@ -7898,7 +7944,7 @@ document.addEventListener('selectstart', e => {
 
   function selectOption(m) {
     penSel.dataset.value = m;
-    penLabel.textContent = labelMap[m] || m;
+    penLabel.innerHTML = labelMap[m] || m;
     closeMenu();
 
     // Leaving slur mode: restore previous smoothing state
